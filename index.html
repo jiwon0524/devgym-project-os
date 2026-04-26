@@ -1,0 +1,3101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProjectOS — DevGym Lab</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬡</text></svg>">
+<style>
+/* ============================================================
+   RESET & ROOT
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  /* ── Backgrounds ── 검정에 가깝지만 완전한 검정은 피함 */
+  --bg0:#111318;   /* 가장 어두운 배경 */
+  --bg1:#17191f;   /* 사이드바, 카드 */
+  --bg2:#1e2028;   /* 인풋, 테이블 헤더 */
+  --bg3:#252832;   /* hover, 칸반 카드 */
+  --bg4:#2d3040;   /* 강조 영역 */
+
+  /* ── Borders ── 너무 진하지 않게, 레이어 구분만 */
+  --bd1:#252830;
+  --bd2:#2e3140;
+  --bd3:#373b50;
+
+  /* ── Text ── 가독성 최우선: 흰색에 가깝되 눈부심 없이 */
+  --t1:#f0f1f5;    /* 주요 텍스트 — 거의 흰색 */
+  --t2:#a8abbe;    /* 보조 텍스트 — 명확하게 읽힘 */
+  --t3:#636680;    /* 흐린 텍스트 — 힌트, 레이블 */
+  --t4:#3a3d52;    /* 매우 흐림 — 비활성 */
+
+  /* ── Brand ── 파란색 계열, 너무 형광 아닌 중간톤 */
+  --accent:#5b8af5;
+  --accent-h:#4a76e8;      /* hover */
+  --accent-dim:#161e38;
+  --accent-mid:rgba(91,138,245,.12);
+
+  /* ── Semantic colors ── 채도 낮춰서 눈 편하게 */
+  --green:#3ecf82;    --green-dim:#0d2218;  --green-bd:#1a4030;
+  --red:#e8605a;      --red-dim:#221010;    --red-bd:#3d1818;
+  --amber:#e8a84a;    --amber-dim:#201608;  --amber-bd:#382808;
+  --purple:#9b7aea;   --purple-dim:#1a1030; --purple-bd:#2d1a50;
+  --cyan:#35c5c5;     --cyan-dim:#081e1e;   --cyan-bd:#143030;
+  --pink:#d4607a;     --pink-dim:#1e0e14;
+
+  /* ── Layout ── */
+  --sidebar-w:232px;
+  --header-h:52px;
+
+  /* ── Typography ── Inter로 가독성 극대화, 코드만 JetBrains Mono */
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:13.5px;
+  line-height:1.5;
+  color-scheme:dark;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  letter-spacing:-0.01em;
+}
+
+/* 코드/ID 전용 폰트 */
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;letter-spacing:0}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bd3);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--t3)}
+
+/* ============================================================
+   TOPBAR
+   ============================================================ */
+.topbar{
+  position:fixed;top:0;left:0;right:0;
+  height:var(--header-h);
+  background:rgba(17,19,24,.96);
+  border-bottom:1px solid var(--bd2);
+  backdrop-filter:blur(16px);
+  display:flex;align-items:center;
+  padding:0 20px;gap:10px;
+  z-index:200;
+}
+.logo-mark{
+  width:28px;height:28px;
+  background:var(--accent);
+  border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:#fff;
+  flex-shrink:0;letter-spacing:0;
+}
+.logo-text{font-size:13px;font-weight:600;color:var(--t1);letter-spacing:-.01em}
+.logo-sub{color:var(--t3);font-weight:400}
+.topbar-sep{color:var(--bd3);font-size:18px;font-weight:300}
+.proj-name-top{font-size:12.5px;color:var(--t2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.status-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 11px;border-radius:20px;
+  font-size:11px;font-weight:600;letter-spacing:.04em;
+  border:1px solid var(--bd2);background:var(--bg3);color:var(--t2);
+}
+.status-pill.planning{border-color:rgba(91,138,245,.3);background:var(--accent-dim);color:var(--accent)}
+.status-pill.inprogress{border-color:var(--amber-bd);background:var(--amber-dim);color:var(--amber)}
+.status-pill.testing{border-color:var(--purple-bd);background:var(--purple-dim);color:var(--purple)}
+.status-pill.done{border-color:var(--green-bd);background:var(--green-dim);color:var(--green)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 2.4s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.workspace{
+  display:flex;
+  margin-top:var(--header-h);
+  height:calc(100vh - var(--header-h));
+  overflow:hidden;
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+.sidebar{
+  width:var(--sidebar-w);
+  background:var(--bg1);
+  border-right:1px solid var(--bd1);
+  display:flex;flex-direction:column;
+  flex-shrink:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+.sidebar-group-label{
+  padding:18px 16px 6px;
+  font-size:10px;color:var(--t4);
+  letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+}
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 12px;margin:1px 8px;
+  border-radius:7px;cursor:pointer;
+  color:var(--t3);font-size:13px;font-weight:500;
+  transition:background .1s,color .1s;
+  user-select:none;
+  white-space:nowrap;overflow:hidden;
+}
+.nav-item:hover{background:var(--bg3);color:var(--t1)}
+.nav-item.active{
+  background:var(--accent-dim);
+  color:var(--accent);
+  border:1px solid rgba(91,138,245,.18);
+}
+.nav-icon{
+  width:16px;height:16px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:13px;
+}
+.nav-label{flex:1;font-size:12.5px}
+.nav-badge{
+  margin-left:auto;
+  background:var(--bg3);color:var(--t3);
+  font-size:10.5px;padding:1px 6px;
+  border-radius:4px;min-width:20px;text-align:center;
+  flex-shrink:0;font-weight:600;
+}
+.nav-item.active .nav-badge{background:rgba(91,138,245,.15);color:var(--accent)}
+.nav-disabled{opacity:.25;cursor:not-allowed;pointer-events:none}
+.sidebar-divider{height:1px;background:var(--bd1);margin:8px 14px}
+.sidebar-footer{margin-top:auto;padding:14px 10px}
+.sidebar-footer-card{
+  background:var(--accent-dim);
+  border:1px solid rgba(91,138,245,.18);
+  border-radius:8px;padding:11px 13px;
+}
+.sidebar-footer-title{font-size:11px;color:var(--accent);font-weight:700;margin-bottom:4px;letter-spacing:.02em}
+.sidebar-footer-body{font-size:11px;color:var(--t3);line-height:1.7}
+
+/* ============================================================
+   MAIN
+   ============================================================ */
+.main{
+  flex:1;display:flex;flex-direction:column;
+  overflow:hidden;background:var(--bg0);
+}
+.page{display:none;flex-direction:column;height:100%;overflow:hidden}
+.page.active{display:flex}
+
+/* Page header */
+.page-hdr{
+  padding:22px 26px 0;
+  display:flex;align-items:flex-start;gap:16px;
+  flex-shrink:0;
+  border-bottom:1px solid var(--bd1);
+  padding-bottom:16px;
+}
+.page-hdr-info{flex:1}
+.page-hdr-title{
+  font-size:20px;font-weight:700;color:var(--t1);
+  letter-spacing:-.02em;line-height:1.2;
+}
+.page-hdr-sub{font-size:12.5px;color:var(--t3);margin-top:4px;font-weight:400}
+.page-hdr-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;margin-top:2px}
+
+/* Content area */
+.content{flex:1;overflow-y:auto;padding:20px 26px 30px}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 14px;border-radius:7px;
+  border:1px solid var(--bd2);background:var(--bg3);
+  color:var(--t2);cursor:pointer;font-size:13px;font-weight:500;
+  font-family:inherit;transition:all .12s;white-space:nowrap;
+  letter-spacing:-.01em;
+}
+.btn:hover{background:var(--bg4);color:var(--t1);border-color:var(--bd3)}
+.btn-primary{
+  background:var(--accent);border-color:var(--accent);
+  color:#fff;font-weight:600;
+}
+.btn-primary:hover{background:var(--accent-h);border-color:var(--accent-h)}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--t3)}
+.btn-ghost:hover{background:var(--bg3);border-color:var(--bd2);color:var(--t2)}
+.btn-danger{background:var(--red-dim);border-color:var(--red-bd);color:var(--red)}
+.btn-danger:hover{background:rgba(232,96,90,.12)}
+
+/* ============================================================
+   FORM ELEMENTS
+   ============================================================ */
+.form-group{margin-bottom:16px}
+.form-label{
+  display:block;font-size:11.5px;color:var(--t2);
+  margin-bottom:6px;font-weight:600;
+  letter-spacing:.01em;
+}
+.form-input,.form-select,.form-textarea{
+  width:100%;background:var(--bg2);
+  border:1px solid var(--bd2);border-radius:7px;
+  padding:9px 12px;color:var(--t1);
+  font-size:13px;font-family:inherit;outline:none;
+  transition:border-color .12s,box-shadow .12s;
+  letter-spacing:-.01em;
+}
+.form-input:focus,.form-select:focus,.form-textarea:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(91,138,245,.1);
+}
+.form-input.error{border-color:var(--red);box-shadow:0 0 0 3px rgba(232,96,90,.1)}
+.form-textarea{resize:vertical;min-height:82px;line-height:1.6}
+.form-select option{background:var(--bg2);color:var(--t1)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+.card{
+  background:var(--bg1);
+  border:1px solid var(--bd1);
+  border-radius:10px;padding:18px;
+}
+.card-title{
+  font-size:11px;color:var(--t3);
+  letter-spacing:.07em;text-transform:uppercase;
+  margin-bottom:14px;font-weight:700;
+}
+.stat-card{
+  background:var(--bg1);border:1px solid var(--bd1);
+  border-radius:10px;padding:18px 20px;
+  transition:border-color .15s;
+}
+.stat-card:hover{border-color:var(--bd2)}
+.stat-val{
+  font-size:30px;font-weight:700;color:var(--t1);
+  line-height:1;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;
+}
+.stat-label{font-size:11.5px;color:var(--t3);margin-top:6px;font-weight:500}
+.stat-sub{font-size:12px;margin-top:8px;color:var(--t3)}
+
+/* ============================================================
+   GRIDS
+   ============================================================ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+
+/* ============================================================
+   BADGES & CHIPS
+   ============================================================ */
+.badge{
+  display:inline-flex;align-items:center;
+  padding:3px 9px;border-radius:5px;
+  font-size:11px;font-weight:600;
+  letter-spacing:.02em;white-space:nowrap;
+}
+/* semantic badge classes */
+.bg{background:var(--bg3);color:var(--t2);border:1px solid var(--bd2)}
+.b-blue{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(91,138,245,.22)}
+.b-green{background:var(--green-dim);color:var(--green);border:1px solid var(--green-bd)}
+.b-red{background:var(--red-dim);color:var(--red);border:1px solid var(--red-bd)}
+.b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber-bd)}
+.b-purple{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-bd)}
+.b-cyan{background:var(--cyan-dim);color:var(--cyan);border:1px solid var(--cyan-bd)}
+.b-gray{background:var(--bg3);color:var(--t2);border:1px solid var(--bd2)}
+.b-pink{background:var(--pink-dim);color:var(--pink);border:1px solid rgba(212,96,122,.22)}
+
+.chip{
+  display:inline-flex;align-items:center;
+  padding:2px 7px;border-radius:4px;
+  font-size:11px;margin:2px;cursor:default;
+  background:var(--accent-dim);
+  border:1px solid rgba(91,138,245,.22);
+  color:var(--accent);font-weight:500;
+  font-family:'JetBrains Mono',monospace;letter-spacing:0;
+}
+.chip-green{background:var(--green-dim);border-color:var(--green-bd);color:var(--green)}
+.chip-red{background:var(--red-dim);border-color:var(--red-bd);color:var(--red)}
+.chip-gray{background:var(--bg3);border-color:var(--bd2);color:var(--t2)}
+
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-high{background:var(--red)}
+.dot-med{background:var(--amber)}
+.dot-low{background:var(--green)}
+
+/* ============================================================
+   PROGRESS BAR
+   ============================================================ */
+.prog-bar{height:4px;background:var(--bd2);border-radius:2px;overflow:hidden}
+.prog-bar.thick{height:6px;border-radius:3px}
+.prog-fill{height:100%;border-radius:inherit;transition:width .5s ease}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--bd1);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{
+  background:var(--bg2);color:var(--t3);
+  padding:10px 14px;text-align:left;
+  font-weight:600;letter-spacing:.04em;
+  font-size:11px;text-transform:uppercase;
+  border-bottom:1px solid var(--bd2);white-space:nowrap;
+}
+td{
+  padding:11px 14px;
+  border-bottom:1px solid var(--bd1);
+  color:var(--t1);vertical-align:middle;
+  font-size:13px;
+}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.018)}
+.td-id{
+  color:var(--accent);
+  font-size:11.5px;
+  font-weight:600;
+  font-family:'JetBrains Mono',monospace;
+  letter-spacing:0;
+  white-space:nowrap;cursor:pointer;
+}
+.td-id:hover{text-decoration:underline;text-underline-offset:3px}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--bd1);margin-bottom:18px;flex-shrink:0}
+.tab{
+  padding:10px 18px;cursor:pointer;font-size:13px;font-weight:500;
+  color:var(--t3);border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:all .13s;user-select:none;
+}
+.tab:hover{color:var(--t2)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+
+/* ============================================================
+   KANBAN
+   ============================================================ */
+.kanban-wrap{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:10px;
+  flex:1;overflow:hidden;min-height:0;
+}
+.kanban-col{
+  background:var(--bg1);border:1px solid var(--bd1);
+  border-radius:10px;display:flex;flex-direction:column;
+  overflow:hidden;min-height:0;
+}
+.kanban-col-hdr{
+  padding:12px 14px;border-bottom:1px solid var(--bd1);
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+}
+.kanban-col-name{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.kanban-col-cnt{
+  margin-left:auto;background:var(--bg3);
+  color:var(--t3);font-size:10.5px;
+  padding:2px 7px;border-radius:4px;font-weight:600;
+}
+.kanban-cards{
+  padding:8px;overflow-y:auto;flex:1;
+  display:flex;flex-direction:column;gap:6px;
+  min-height:0;
+}
+.k-card{
+  background:var(--bg2);border:1px solid var(--bd2);
+  border-radius:8px;padding:12px;
+  cursor:pointer;transition:all .12s;
+}
+.k-card:hover{border-color:var(--bd3);background:var(--bg3)}
+.k-card-title{font-size:12.5px;font-weight:500;margin-bottom:7px;line-height:1.45;color:var(--t1)}
+.k-card-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:11.5px;color:var(--t3)}
+.k-card-actions{display:flex;gap:3px;margin-top:9px;flex-wrap:wrap}
+.add-card-btn{
+  margin:4px 8px 8px;padding:8px;
+  border-radius:6px;border:1px dashed var(--bd2);
+  background:none;color:var(--t4);cursor:pointer;
+  font-size:12px;font-weight:500;
+  width:calc(100% - 16px);text-align:center;
+  transition:all .12s;font-family:inherit;
+}
+.add-card-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+.modal-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.75);z-index:500;
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);
+}
+.modal{
+  background:var(--bg1);
+  border:1px solid var(--bd3);
+  border-radius:14px;
+  width:600px;max-height:90vh;
+  display:flex;flex-direction:column;
+  box-shadow:0 24px 64px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.03);
+  animation:modal-in .16s ease;
+}
+.modal-lg{width:700px}
+.modal-xl{width:840px}
+@keyframes modal-in{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.modal-hdr{
+  padding:20px 24px 16px;border-bottom:1px solid var(--bd2);
+  display:flex;align-items:center;
+}
+.modal-title{font-size:15px;font-weight:700;color:var(--t1);letter-spacing:-.01em}
+.modal-close{
+  margin-left:auto;background:none;border:none;
+  color:var(--t3);cursor:pointer;font-size:22px;
+  line-height:1;padding:2px 6px;border-radius:5px;
+  transition:all .12s;
+}
+.modal-close:hover{color:var(--t1);background:var(--bg3)}
+.modal-body{padding:24px;overflow-y:auto;flex:1}
+.modal-footer{
+  padding:16px 24px;border-top:1px solid var(--bd2);
+  display:flex;gap:8px;justify-content:flex-end;
+}
+
+/* ============================================================
+   TIMELINE / GANTT
+   ============================================================ */
+.gantt-header{
+  display:flex;border-bottom:1px solid var(--bd2);
+  background:var(--bg2);
+}
+.gantt-label-col{
+  width:280px;flex-shrink:0;padding:9px 14px;
+  font-size:10.5px;color:var(--t3);
+  letter-spacing:.05em;text-transform:uppercase;font-weight:700;
+  border-right:1px solid var(--bd2);
+}
+.gantt-months{flex:1;display:flex;overflow:hidden}
+.gantt-month{
+  flex:1;text-align:center;padding:9px 4px;
+  font-size:10.5px;color:var(--t3);
+  letter-spacing:.04em;text-transform:uppercase;font-weight:600;
+  border-right:1px solid var(--bd2);
+}
+.gantt-month:last-child{border-right:none}
+.gantt-row{
+  display:flex;border-bottom:1px solid var(--bd1);
+  min-height:40px;align-items:center;
+}
+.gantt-row:hover{background:rgba(255,255,255,.014)}
+.gantt-row-label{
+  width:280px;flex-shrink:0;padding:0 14px;
+  font-size:12px;border-right:1px solid var(--bd1);
+  display:flex;align-items:center;gap:9px;
+}
+.gantt-row-bars{flex:1;position:relative;overflow:hidden;height:40px}
+.gantt-bar{
+  position:absolute;height:20px;top:10px;
+  border-radius:5px;display:flex;align-items:center;
+  padding:0 8px;font-size:10.5px;font-weight:600;
+  white-space:nowrap;overflow:hidden;
+  transition:all .2s;cursor:pointer;
+}
+.gantt-bar:hover{filter:brightness(1.12);height:24px;top:8px}
+.gantt-today{
+  position:absolute;top:0;bottom:0;width:1.5px;
+  background:var(--red);opacity:.7;
+  pointer-events:none;
+}
+
+/* ============================================================
+   API SPEC
+   ============================================================ */
+.method-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:3px 9px;border-radius:5px;
+  font-size:11px;font-weight:700;letter-spacing:.04em;
+  min-width:58px;font-family:'JetBrains Mono',monospace;
+}
+.method-GET{background:var(--green-dim);color:var(--green);border:1px solid var(--green-bd)}
+.method-POST{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(91,138,245,.22)}
+.method-PUT{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber-bd)}
+.method-PATCH{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-bd)}
+.method-DELETE{background:var(--red-dim);color:var(--red);border:1px solid var(--red-bd)}
+
+.code-block{
+  background:var(--bg0);border:1px solid var(--bd2);
+  border-radius:8px;padding:14px;
+  font-size:12px;color:var(--green);
+  line-height:1.7;white-space:pre-wrap;word-break:break-all;
+  font-family:'JetBrains Mono',monospace;letter-spacing:0;
+  max-height:200px;overflow-y:auto;
+}
+.endpoint-row{
+  background:var(--bg2);border:1px solid var(--bd2);
+  border-radius:9px;padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+  cursor:pointer;transition:border-color .12s,background .12s;
+  margin-bottom:6px;
+}
+.endpoint-row:hover{background:var(--bg3);border-color:var(--bd3)}
+.endpoint-path{
+  font-size:13px;font-weight:500;color:var(--t1);flex:1;
+  font-family:'JetBrains Mono',monospace;letter-spacing:0;
+}
+.endpoint-desc{font-size:12px;color:var(--t3)}
+
+/* ============================================================
+   RISK MATRIX
+   ============================================================ */
+.risk-cell{
+  border-radius:7px;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;
+  color:rgba(255,255,255,.4);min-height:56px;position:relative;
+  flex-direction:column;gap:3px;
+}
+.risk-cell.low-low{background:var(--green-dim);border:1px solid var(--green-bd)}
+.risk-cell.low-med,.risk-cell.med-low{background:rgba(18,24,14,.5);border:1px solid rgba(55,140,55,.12)}
+.risk-cell.med-med,.risk-cell.low-high,.risk-cell.high-low{background:var(--amber-dim);border:1px solid var(--amber-bd)}
+.risk-cell.med-high,.risk-cell.high-med{background:rgba(232,96,90,.06);border:1px solid rgba(232,96,90,.18)}
+.risk-cell.high-high{background:var(--red-dim);border:1px solid var(--red-bd)}
+.risk-matrix-dot{
+  width:16px;height:16px;border-radius:50%;
+  background:var(--amber);border:2px solid var(--bg1);
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;font-weight:700;color:var(--bg1);
+  cursor:pointer;transition:transform .12s;
+}
+.risk-matrix-dot:hover{transform:scale(1.3)}
+
+/* ============================================================
+   MEETING NOTES
+   ============================================================ */
+.meeting-card{
+  background:var(--bg1);border:1px solid var(--bd1);
+  border-radius:10px;padding:16px 18px;
+  margin-bottom:8px;cursor:pointer;
+  transition:border-color .12s,background .12s;
+}
+.meeting-card:hover{background:var(--bg2);border-color:var(--bd2)}
+.meeting-date{font-size:11.5px;color:var(--t3);margin-bottom:5px;font-weight:500}
+.meeting-title{font-size:14px;font-weight:600;margin-bottom:7px;color:var(--t1)}
+.meeting-meta{display:flex;gap:14px;font-size:12px;color:var(--t3)}
+.action-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:9px 12px;background:var(--bg2);
+  border:1px solid var(--bd2);border-radius:7px;
+  margin-bottom:5px;
+}
+.action-item input[type=checkbox]{
+  margin-top:2px;accent-color:var(--accent);
+  width:14px;height:14px;flex-shrink:0;
+}
+
+/* ============================================================
+   EXPORT CARDS
+   ============================================================ */
+.export-card{
+  background:var(--bg1);border:1px solid var(--bd1);
+  border-radius:10px;padding:16px 18px;
+  display:flex;align-items:center;gap:14px;
+  transition:border-color .12s;
+}
+.export-card:hover{border-color:var(--bd2)}
+.export-icon{
+  width:42px;height:42px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;flex-shrink:0;
+}
+.export-info{flex:1;min-width:0}
+.export-name{font-size:13.5px;font-weight:600;color:var(--t1);margin-bottom:3px}
+.export-desc{font-size:12px;color:var(--t3);line-height:1.5}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--bg2);border:1px solid var(--bd3);
+  border-radius:9px;padding:12px 18px;
+  font-size:13px;font-weight:500;
+  color:var(--t1);z-index:9999;
+  transform:translateY(80px);opacity:0;
+  transition:all .22s ease;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  max-width:340px;
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.t-ok{border-color:var(--green-bd);color:var(--green)}
+.toast.t-err{border-color:var(--red-bd);color:var(--red)}
+.toast.t-info{border-color:rgba(91,138,245,.28);color:var(--accent)}
+
+/* ============================================================
+   MISC UTILITIES
+   ============================================================ */
+.empty-state{
+  text-align:center;padding:56px 24px;color:var(--t3);
+}
+.empty-state .empty-icon{font-size:36px;margin-bottom:14px;opacity:.35}
+.empty-state .empty-title{font-size:14px;color:var(--t2);margin-bottom:6px;font-weight:600}
+.empty-state .empty-sub{font-size:13px;line-height:1.6}
+
+input[type=checkbox]{accent-color:var(--accent);cursor:pointer}
+input[type=range]{accent-color:var(--accent);width:100%;margin-top:4px;cursor:pointer}
+input[type=date]{color-scheme:dark}
+
+.section-row{display:flex;align-items:center;margin-bottom:14px}
+.section-row h3{font-size:14px;font-weight:600;color:var(--t1)}
+.section-row .cnt{margin-left:8px;background:var(--bg3);color:var(--t3);font-size:11px;padding:1px 7px;border-radius:4px;font-weight:600}
+.section-row .ml{margin-left:auto}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     TOPBAR
+     ============================================================ -->
+<div class="topbar">
+  <div class="logo-mark">P</div>
+  <div class="logo-text">DevGym<span class="logo-sub">Lab</span></div>
+  <span class="topbar-sep">/</span>
+  <div class="logo-text">Project<span class="logo-sub">OS</span></div>
+  <span class="topbar-sep">/</span>
+  <div class="proj-name-top" id="topbar-pname">—</div>
+  <div class="topbar-right">
+    <div class="status-pill planning" id="status-pill"><span class="status-dot"></span><span id="status-text">PLANNING</span></div>
+    <button class="btn btn-sm" onclick="openModal('settings')">Settings</button>
+    <button class="btn btn-sm btn-primary" onclick="loadSample()">Load Demo</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     WORKSPACE
+     ============================================================ -->
+<div class="workspace">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-group-label">DevGym Lab</div>
+  <div class="nav-item nav-disabled"><span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><span class="nav-label">SQL Practice</span></div>
+  <div class="nav-item nav-disabled"><span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span><span class="nav-label">OS Practice</span></div>
+  <div class="nav-item nav-disabled"><span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><span class="nav-label">Security</span></div>
+  <div class="nav-item nav-disabled"><span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/></svg></span><span class="nav-label">UML Practice</span></div>
+
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-group-label">Project OS</div>
+
+  <div class="nav-item active" data-p="dashboard" onclick="nav('dashboard')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+    <span class="nav-label">Dashboard</span>
+  </div>
+  <div class="nav-item" data-p="brief" onclick="nav('brief')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+    <span class="nav-label">Project Brief</span>
+  </div>
+  <div class="nav-item" data-p="requirements" onclick="nav('requirements')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg></span>
+    <span class="nav-label">Requirements</span>
+    <span class="nav-badge" id="nb-req">0</span>
+  </div>
+  <div class="nav-item" data-p="tasks" onclick="nav('tasks')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+    <span class="nav-label">WBS / Tasks</span>
+    <span class="nav-badge" id="nb-task">0</span>
+  </div>
+  <div class="nav-item" data-p="testcases" onclick="nav('testcases')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0H5m4 0h10M9 14v7m0 0H5m4 0h10m0-11v7"/></svg></span>
+    <span class="nav-label">Test Cases</span>
+    <span class="nav-badge" id="nb-tc">0</span>
+  </div>
+  <div class="nav-item" data-p="timeline" onclick="nav('timeline')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+    <span class="nav-label">Timeline</span>
+  </div>
+  <div class="nav-item" data-p="apispec" onclick="nav('apispec')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
+    <span class="nav-label">API Spec</span>
+    <span class="nav-badge" id="nb-api">0</span>
+  </div>
+  <div class="nav-item" data-p="risk" onclick="nav('risk')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+    <span class="nav-label">Risk Mgmt</span>
+    <span class="nav-badge" id="nb-risk">0</span>
+  </div>
+  <div class="nav-item" data-p="meeting" onclick="nav('meeting')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+    <span class="nav-label">Meeting Notes</span>
+    <span class="nav-badge" id="nb-mtg">0</span>
+  </div>
+  <div class="nav-item" data-p="export" onclick="nav('export')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+    <span class="nav-label">Export Center</span>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-footer-card">
+      <div class="sidebar-footer-title">ProjectOS v2.0</div>
+      <div class="sidebar-footer-body">
+        Full MVP + Timeline<br>API Spec · Risk · Meeting<br>localStorage 자동저장
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- =========================================================
+     DASHBOARD
+     ========================================================= -->
+<div class="page active" id="page-dashboard">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title" id="dash-pname">프로젝트명 미설정</div>
+      <div class="page-hdr-sub" id="dash-psub">⚡ 상단 "Load Demo" 버튼으로 샘플 데이터를 불러오거나 Project Brief에서 시작하세요</div>
+    </div>
+    <div class="page-hdr-actions">
+      <button class="btn" onclick="nav('brief')">✎ Brief</button>
+      <button class="btn btn-primary" onclick="openModal('add-req')">+ 요구사항</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="g5" style="margin-bottom:14px">
+      <div class="stat-card">
+        <div class="stat-val" id="d-req">0</div>
+        <div class="stat-label">Requirements</div>
+        <div class="stat-sub"><span id="d-fr" style="color:var(--accent)">0</span> FR · <span id="d-nfr" style="color:var(--purple)">0</span> NFR</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="d-task">0</div>
+        <div class="stat-label">Total Tasks</div>
+        <div class="stat-sub"><span id="d-tdone" style="color:var(--green)">0</span> done · <span id="d-tinprog" style="color:var(--amber)">0</span> active</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="d-pct">0%</div>
+        <div class="stat-label">Task Progress</div>
+        <div class="prog-bar thick" style="margin-top:9px"><div class="prog-fill" id="d-pbar" style="width:0%;background:var(--accent)"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="d-tc">0</div>
+        <div class="stat-label">Test Cases</div>
+        <div class="stat-sub"><span id="d-tcpass" style="color:var(--green)">0</span> pass · <span id="d-tcfail" style="color:var(--red)">0</span> fail</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="d-passrate">—</div>
+        <div class="stat-label">Pass Rate</div>
+        <div class="prog-bar thick" style="margin-top:9px"><div class="prog-fill" id="d-prbar" style="width:0%;background:var(--green)"></div></div>
+      </div>
+    </div>
+    <div class="g2" style="gap:14px">
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title">In Progress / To Do</div>
+          <div id="dash-active"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Traceability Coverage</div>
+          <div id="dash-trace"></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div class="card-title">Requirements by Status</div>
+          <div id="dash-req-bars" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Test Results</div>
+          <div id="dash-tc-bars" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Quick Actions</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button class="btn" style="justify-content:flex-start" onclick="openModal('add-req')">+ 요구사항 추가</button>
+            <button class="btn" style="justify-content:flex-start" onclick="openModal('add-task')">+ 작업 추가</button>
+            <button class="btn" style="justify-content:flex-start" onclick="openModal('add-tc')">+ 테스트케이스 추가</button>
+            <button class="btn" style="justify-content:flex-start" onclick="openModal('add-api')">+ API 추가</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     PROJECT BRIEF
+     ========================================================= -->
+<div class="page" id="page-brief">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">Project Brief</div>
+      <div class="page-hdr-sub">프로젝트 개요서 — 자동 저장됨</div>
+    </div>
+    <div class="page-hdr-actions">
+      <button class="btn" onclick="copyBriefMd()">Markdown 복사</button>
+      <button class="btn btn-primary" onclick="saveBrief()">저장</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="g2" style="gap:16px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="card-title">기본 정보</div>
+          <div class="form-group"><label class="form-label">프로젝트명 *</label><input class="form-input" id="b-name" placeholder="예: DevGym ProjectOS"></div>
+          <div class="form-group"><label class="form-label">한 줄 소개</label><input class="form-input" id="b-tagline" placeholder="예: PM과 개발자를 위한 올인원 PM 도구"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">시작일</label><input class="form-input" type="date" id="b-start"></div>
+            <div class="form-group"><label class="form-label">종료일</label><input class="form-input" type="date" id="b-end"></div>
+          </div>
+          <div class="form-group"><label class="form-label">상태</label>
+            <select class="form-select" id="b-status">
+              <option value="Planning">Planning</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Testing">Testing</option>
+              <option value="Done">Done</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">팀 구성</div>
+          <div class="form-group"><label class="form-label">팀원 (쉼표 구분)</label><input class="form-input" id="b-members" placeholder="홍길동(PM), 김개발(FE), 이백엔드(BE)"></div>
+          <div class="form-group"><label class="form-label">역할 분담</label><textarea class="form-textarea" id="b-roles" placeholder="- 홍길동: PM, 요구사항 분석&#10;- 김개발: 프론트엔드 개발"></textarea></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="card-title">프로젝트 내용</div>
+          <div class="form-group"><label class="form-label">목적</label><textarea class="form-textarea" id="b-purpose" placeholder="이 프로젝트가 왜 필요한가?"></textarea></div>
+          <div class="form-group"><label class="form-label">해결하려는 문제</label><textarea class="form-textarea" id="b-problem" placeholder="현재 어떤 문제가 있는가?"></textarea></div>
+          <div class="form-group"><label class="form-label">대상 사용자</label><input class="form-input" id="b-users" placeholder="예: 사이드 프로젝트 팀, 졸업작품 팀"></div>
+          <div class="form-group"><label class="form-label">핵심 가치</label><textarea class="form-textarea" id="b-value" placeholder="이 프로젝트의 핵심 가치는?"></textarea></div>
+          <div class="form-group"><label class="form-label">주요 기능</label><textarea class="form-textarea" id="b-features" placeholder="- 요구사항 관리&#10;- WBS/태스크 보드&#10;- 테스트 케이스"></textarea></div>
+          <div class="form-group"><label class="form-label">성공 기준</label><textarea class="form-textarea" id="b-success" placeholder="이 프로젝트가 성공했다고 판단하는 기준은?"></textarea></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     REQUIREMENTS
+     ========================================================= -->
+<div class="page" id="page-requirements">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">Requirements</div>
+      <div class="page-hdr-sub">기능/비기능 요구사항 · 자동 ID 체계 · 추적 가능한 연결 구조</div>
+    </div>
+    <div class="page-hdr-actions">
+      <select class="form-select" id="rf-type" onchange="renderReqs()" style="width:105px;font-size:11px;padding:4px 8px">
+        <option value="">All Types</option><option value="FR">Functional</option><option value="NFR">Non-Functional</option>
+      </select>
+      <select class="form-select" id="rf-priority" onchange="renderReqs()" style="width:100px;font-size:11px;padding:4px 8px">
+        <option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option>
+      </select>
+      <select class="form-select" id="rf-status" onchange="renderReqs()" style="width:110px;font-size:11px;padding:4px 8px">
+        <option value="">All Status</option><option>Draft</option><option>Approved</option><option>In Progress</option><option>Done</option>
+      </select>
+      <button class="btn btn-primary" onclick="openModal('add-req')">+ Add</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="tabs">
+      <div class="tab active" id="req-tab-tbl" onclick="switchReqTab('table')">Table View</div>
+      <div class="tab" id="req-tab-card" onclick="switchReqTab('card')">Card View</div>
+    </div>
+    <div id="req-tbl-view">
+      <div class="tbl-wrap">
+        <table><thead><tr><th>ID</th><th>Title</th><th>Type</th><th>Priority</th><th>Status</th><th>Owner</th><th>Tasks</th><th>APIs</th><th>TCs</th><th></th></tr></thead>
+        <tbody id="req-tbody"></tbody></table>
+      </div>
+    </div>
+    <div id="req-card-view" style="display:none"></div>
+  </div>
+</div>
+
+<!-- =========================================================
+     WBS / TASKS
+     ========================================================= -->
+<div class="page" id="page-tasks">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">WBS / Task Board</div>
+      <div class="page-hdr-sub">작업 분해 구조 · 칸반 보드 · WBS 테이블</div>
+    </div>
+    <div class="page-hdr-actions">
+      <select class="form-select" id="tf-owner" onchange="renderTasks()" style="width:110px;font-size:11px;padding:4px 8px">
+        <option value="">All Members</option>
+      </select>
+      <select class="form-select" id="tf-phase" onchange="renderTasks()" style="width:105px;font-size:11px;padding:4px 8px">
+        <option value="">All Phases</option>
+        <option>기획</option><option>요구사항 분석</option><option>설계</option>
+        <option>개발</option><option>테스트</option><option>배포</option>
+      </select>
+      <button class="btn btn-primary" onclick="openModal('add-task')">+ Add Task</button>
+    </div>
+  </div>
+  <div class="content" style="display:flex;flex-direction:column;overflow:hidden;padding-bottom:0">
+    <div class="tabs">
+      <div class="tab active" id="task-tab-kb" onclick="switchTaskTab('kanban')">Kanban Board</div>
+      <div class="tab" id="task-tab-wbs" onclick="switchTaskTab('wbs')">WBS Table</div>
+    </div>
+    <div id="task-kanban-wrap" style="flex:1;min-height:0;overflow:hidden">
+      <div class="kanban-wrap" id="kanban-board"></div>
+    </div>
+    <div id="task-wbs-wrap" style="display:none;overflow-y:auto;flex:1">
+      <div class="tbl-wrap">
+        <table><thead><tr><th>ID</th><th>Task</th><th>Phase</th><th>Req</th><th>Owner</th><th>Priority</th><th>Status</th><th>Due</th><th>Progress</th><th></th></tr></thead>
+        <tbody id="wbs-tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     TEST CASES
+     ========================================================= -->
+<div class="page" id="page-testcases">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">Test Cases</div>
+      <div class="page-hdr-sub">테스트 케이스 관리 · 요구사항 기반 추적</div>
+    </div>
+    <div class="page-hdr-actions">
+      <select class="form-select" id="tcf-req" onchange="renderTCs()" style="width:130px;font-size:11px;padding:4px 8px">
+        <option value="">All Reqs</option>
+      </select>
+      <select class="form-select" id="tcf-status" onchange="renderTCs()" style="width:100px;font-size:11px;padding:4px 8px">
+        <option value="">All Status</option><option>Not Run</option><option>Pass</option><option>Fail</option>
+      </select>
+      <button class="btn btn-primary" onclick="openModal('add-tc')">+ Add TC</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="tbl-wrap">
+      <table><thead><tr><th>TC ID</th><th>Test Name</th><th>Req</th><th>Precondition</th><th>Input</th><th>Expected</th><th>Actual</th><th>Status</th><th>Owner</th><th></th></tr></thead>
+      <tbody id="tc-tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     TIMELINE
+     ========================================================= -->
+<div class="page" id="page-timeline">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">Timeline</div>
+      <div class="page-hdr-sub">프로젝트 일정 · Gantt Chart · 마감 추적</div>
+    </div>
+    <div class="page-hdr-actions">
+      <select class="form-select" id="tl-filter" onchange="renderTimeline()" style="width:110px;font-size:11px;padding:4px 8px">
+        <option value="">All Phases</option>
+        <option>기획</option><option>요구사항 분석</option><option>설계</option>
+        <option>개발</option><option>테스트</option><option>배포</option>
+      </select>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card" style="margin-bottom:12px;padding:12px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2)"><div style="width:12px;height:4px;background:var(--green);border-radius:2px"></div>Done</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2)"><div style="width:12px;height:4px;background:var(--amber);border-radius:2px"></div>In Progress</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2)"><div style="width:12px;height:4px;background:var(--accent);border-radius:2px"></div>To Do</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2)"><div style="width:12px;height:4px;background:var(--red);border-radius:2px"></div>Overdue</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2)"><div style="width:2px;height:12px;background:var(--red);opacity:.6"></div>Today</div>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div id="gantt-container"></div>
+    </div>
+    <div style="margin-top:12px" id="tl-legend"></div>
+  </div>
+</div>
+
+<!-- =========================================================
+     API SPEC
+     ========================================================= -->
+<div class="page" id="page-apispec">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">API Spec</div>
+      <div class="page-hdr-sub">API 설계 · 요구사항 연결 · Method/Endpoint/Request/Response</div>
+    </div>
+    <div class="page-hdr-actions">
+      <select class="form-select" id="apif-method" onchange="renderAPIs()" style="width:100px;font-size:11px;padding:4px 8px">
+        <option value="">All Methods</option><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option>
+      </select>
+      <select class="form-select" id="apif-status" onchange="renderAPIs()" style="width:100px;font-size:11px;padding:4px 8px">
+        <option value="">All Status</option><option>Draft</option><option>Review</option><option>Done</option>
+      </select>
+      <button class="btn btn-primary" onclick="openModal('add-api')">+ Add API</button>
+    </div>
+  </div>
+  <div class="content">
+    <div id="api-list"></div>
+  </div>
+</div>
+
+<!-- =========================================================
+     RISK MANAGEMENT
+     ========================================================= -->
+<div class="page" id="page-risk">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">Risk Management</div>
+      <div class="page-hdr-sub">리스크 식별 · 영향도 × 발생가능성 매트릭스</div>
+    </div>
+    <div class="page-hdr-actions">
+      <button class="btn btn-primary" onclick="openModal('add-risk')">+ Add Risk</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="g2" style="gap:16px;align-items:start">
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title">리스크 목록</div>
+          <div id="risk-list"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Risk Matrix — 영향도 × 발생가능성</div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;margin-top:4px">
+          <div style="font-size:10px;color:var(--t3);text-align:right;line-height:3.2;writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.1em;height:150px">영향도 →</div>
+          <div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px" id="risk-matrix"></div>
+            <div style="display:flex;justify-content:space-around;margin-top:4px;font-size:10px;color:var(--t3)">
+              <span>Low</span><span>Medium</span><span>High</span>
+            </div>
+            <div style="text-align:center;font-size:10px;color:var(--t3);margin-top:2px">← 발생 가능성</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     MEETING NOTES
+     ========================================================= -->
+<div class="page" id="page-meeting">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">Meeting Notes</div>
+      <div class="page-hdr-sub">회의록 관리 · 액션 아이템 → Task 자동 변환</div>
+    </div>
+    <div class="page-hdr-actions">
+      <button class="btn btn-primary" onclick="openModal('add-meeting')">+ New Meeting</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="g2" style="gap:14px;align-items:start">
+      <div id="meeting-list"></div>
+      <div id="meeting-detail" class="card" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     EXPORT CENTER
+     ========================================================= -->
+<div class="page" id="page-export">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">Export Center</div>
+      <div class="page-hdr-sub">PDF · Excel (.xlsx) · Word (.docx) · Markdown · JSON — 실무 문서 직접 생성</div>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- PDF 섹션 -->
+    <div style="margin-bottom:6px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <div style="width:3px;height:14px;background:var(--red);border-radius:2px"></div>
+        PDF 문서
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(232,96,90,.1);border:1px solid var(--red-bd)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">Project Brief</div>
+            <div class="export-desc">프로젝트 개요서 PDF<br>팀 공유·발표용</div>
+          </div>
+          <button class="btn btn-sm" style="border-color:var(--red-bd);color:var(--red);background:var(--red-dim);flex-shrink:0" onclick="expPDF('brief')">PDF</button>
+        </div>
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(232,96,90,.1);border:1px solid var(--red-bd)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">SRS 전체 문서</div>
+            <div class="export-desc">요구사항 명세서 PDF<br>발주처·고객사 제출용</div>
+          </div>
+          <button class="btn btn-sm" style="border-color:var(--red-bd);color:var(--red);background:var(--red-dim);flex-shrink:0" onclick="expPDF('srs')">PDF</button>
+        </div>
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(232,96,90,.1);border:1px solid var(--red-bd)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">테스트 결과 보고서</div>
+            <div class="export-desc">QA 보고서 PDF<br>테스트 현황·Pass/Fail</div>
+          </div>
+          <button class="btn btn-sm" style="border-color:var(--red-bd);color:var(--red);background:var(--red-dim);flex-shrink:0" onclick="expPDF('qa')">PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Excel 섹션 -->
+    <div style="margin-bottom:6px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <div style="width:3px;height:14px;background:var(--green);border-radius:2px"></div>
+        Excel 스프레드시트 (.xlsx)
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(62,207,130,.1);border:1px solid var(--green-bd)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">Requirements 목록</div>
+            <div class="export-desc">요구사항 전체 Excel<br>RTM 포함 멀티시트</div>
+          </div>
+          <button class="btn btn-sm" style="border-color:var(--green-bd);color:var(--green);background:var(--green-dim);flex-shrink:0" onclick="expXLSX('req')">XLSX</button>
+        </div>
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(62,207,130,.1);border:1px solid var(--green-bd)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">WBS / Task 목록</div>
+            <div class="export-desc">작업 분해 Excel<br>간트 데이터 포함</div>
+          </div>
+          <button class="btn btn-sm" style="border-color:var(--green-bd);color:var(--green);background:var(--green-dim);flex-shrink:0" onclick="expXLSX('wbs')">XLSX</button>
+        </div>
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(62,207,130,.1);border:1px solid var(--green-bd)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">테스트 케이스 목록</div>
+            <div class="export-desc">TC 전체 Excel<br>Pass/Fail 통계 포함</div>
+          </div>
+          <button class="btn btn-sm" style="border-color:var(--green-bd);color:var(--green);background:var(--green-dim);flex-shrink:0" onclick="expXLSX('tc')">XLSX</button>
+        </div>
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(62,207,130,.1);border:1px solid var(--green-bd)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">Risk Register</div>
+            <div class="export-desc">리스크 목록 Excel<br>영향도·대응 전략 포함</div>
+          </div>
+          <button class="btn btn-sm" style="border-color:var(--green-bd);color:var(--green);background:var(--green-dim);flex-shrink:0" onclick="expXLSX('risk')">XLSX</button>
+        </div>
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(62,207,130,.1);border:1px solid var(--green-bd)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">전체 통합 Excel</div>
+            <div class="export-desc">모든 데이터 멀티시트<br>Requirements·WBS·TC·Risk</div>
+          </div>
+          <button class="btn btn-sm" style="border-color:var(--green-bd);color:var(--green);background:var(--green-dim);flex-shrink:0" onclick="expXLSX('all')">XLSX</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Word 섹션 -->
+    <div style="margin-bottom:6px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <div style="width:3px;height:14px;background:var(--accent);border-radius:2px"></div>
+        Word 문서 (.docx) — 한글(HWP)에서도 열기 가능
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(91,138,245,.1);border:1px solid rgba(91,138,245,.25)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">Project Brief</div>
+            <div class="export-desc">프로젝트 개요서 Word<br>목차·섹션 자동 구성</div>
+          </div>
+          <button class="btn btn-sm btn-primary" style="flex-shrink:0" onclick="expDOCX('brief')">DOCX</button>
+        </div>
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(91,138,245,.1);border:1px solid rgba(91,138,245,.25)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">SRS 문서</div>
+            <div class="export-desc">소프트웨어 요구사항 명세서<br>발주처 제출 포맷</div>
+          </div>
+          <button class="btn btn-sm btn-primary" style="flex-shrink:0" onclick="expDOCX('srs')">DOCX</button>
+        </div>
+        <div class="export-card">
+          <div class="export-icon" style="background:rgba(91,138,245,.1);border:1px solid rgba(91,138,245,.25)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">회의록 묶음</div>
+            <div class="export-desc">전체 회의록 Word<br>액션 아이템 포함</div>
+          </div>
+          <button class="btn btn-sm btn-primary" style="flex-shrink:0" onclick="expDOCX('meetings')">DOCX</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 기타 -->
+    <div style="margin-bottom:6px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <div style="width:3px;height:14px;background:var(--t3);border-radius:2px"></div>
+        기타 — Markdown · JSON 백업
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+        <div class="export-card">
+          <div class="export-icon" style="background:var(--bg3);border:1px solid var(--bd2)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">API Spec (Markdown)</div>
+            <div class="export-desc">API 명세서 MD 클립보드 복사</div>
+          </div>
+          <button class="btn btn-sm" style="flex-shrink:0" onclick="expAPIs()">Copy</button>
+        </div>
+        <div class="export-card">
+          <div class="export-icon" style="background:var(--bg3);border:1px solid var(--bd2)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">전체 백업 (JSON)</div>
+            <div class="export-desc">모든 데이터 JSON 백업 · 복원 가능</div>
+          </div>
+          <button class="btn btn-sm" style="flex-shrink:0" onclick="expJSON()">Download</button>
+        </div>
+        <div class="export-card">
+          <div class="export-icon" style="background:var(--bg3);border:1px solid var(--bd2)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="export-info">
+            <div class="export-name">JSON 복원</div>
+            <div class="export-desc">백업 파일에서 전체 복원</div>
+          </div>
+          <button class="btn btn-sm" style="flex-shrink:0" onclick="document.getElementById('import-file').click()">Import<input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(event)"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RTM -->
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span>Requirements Traceability Matrix (RTM)</span>
+        <button class="btn btn-sm" style="margin-left:auto" onclick="expXLSX('rtm')">RTM Excel 다운로드</button>
+        <button class="btn btn-sm" style="border-color:var(--red-bd);color:var(--red);background:var(--red-dim)" onclick="expPDF('rtm')">RTM PDF</button>
+      </div>
+      <div id="rtm-wrap"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /workspace -->
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- SETTINGS -->
+<div class="modal-overlay" id="modal-settings" style="display:none" onclick="overlayClose(event,'settings')">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">⚙ Project Settings</span><button class="modal-close" onclick="closeModal('settings')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">프로젝트명</label><input class="form-input" id="ps-name"></div>
+      <div class="form-group"><label class="form-label">상태</label>
+        <select class="form-select" id="ps-status"><option>Planning</option><option>In Progress</option><option>Testing</option><option>Done</option></select>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('settings')">취소</button><button class="btn btn-primary" onclick="saveSettings()">저장</button></div>
+  </div>
+</div>
+
+<!-- ADD REQUIREMENT -->
+<div class="modal-overlay" id="modal-add-req" style="display:none" onclick="overlayClose(event,'add-req')">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="req-modal-t">+ Add Requirement</span><button class="modal-close" onclick="closeModal('add-req')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">유형</label>
+          <select class="form-select" id="r-type" onchange="previewReqId()"><option value="FR">Functional (FR)</option><option value="NFR">Non-Functional (NFR)</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Auto ID</label><input class="form-input" id="r-id" readonly style="color:var(--accent);font-weight:700"></div>
+      </div>
+      <div class="form-group"><label class="form-label">제목 *</label><input class="form-input" id="r-title" placeholder="예: 회원가입 기능"></div>
+      <div class="form-group"><label class="form-label">설명</label><textarea class="form-textarea" id="r-desc" placeholder="상세 설명"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">우선순위</label>
+          <select class="form-select" id="r-priority"><option value="High">🔴 High</option><option value="Medium" selected>🟡 Medium</option><option value="Low">🟢 Low</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">상태</label>
+          <select class="form-select" id="r-status"><option value="Draft" selected>Draft</option><option value="Approved">Approved</option><option value="In Progress">In Progress</option><option value="Done">Done</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">담당자</label><input class="form-input" id="r-owner" placeholder="예: 홍길동"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="r-del" style="display:none;margin-right:auto" onclick="delReq()">삭제</button>
+      <button class="btn" onclick="closeModal('add-req')">취소</button>
+      <button class="btn btn-primary" onclick="saveReq()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TASK -->
+<div class="modal-overlay" id="modal-add-task" style="display:none" onclick="overlayClose(event,'add-task')">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="task-modal-t">+ Add Task</span><button class="modal-close" onclick="closeModal('add-task')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Task ID</label><input class="form-input" id="t-id" readonly style="color:var(--accent);font-weight:700"></div>
+        <div class="form-group"><label class="form-label">Phase</label>
+          <select class="form-select" id="t-phase"><option>기획</option><option>요구사항 분석</option><option>설계</option><option selected>개발</option><option>테스트</option><option>배포</option><option>유지보수</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">작업명 *</label><input class="form-input" id="t-title" placeholder="예: 회원가입 UI 개발"></div>
+      <div class="form-group"><label class="form-label">설명</label><textarea class="form-textarea" id="t-desc" placeholder="작업 상세 설명"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">관련 요구사항</label><select class="form-select" id="t-req"><option value="">없음</option></select></div>
+        <div class="form-group"><label class="form-label">담당자</label><input class="form-input" id="t-owner" placeholder="예: 김개발"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">우선순위</label>
+          <select class="form-select" id="t-priority"><option value="High">🔴 High</option><option value="Medium" selected>🟡 Medium</option><option value="Low">🟢 Low</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">상태</label>
+          <select class="form-select" id="t-status"><option value="Backlog">Backlog</option><option value="To Do">To Do</option><option value="In Progress">In Progress</option><option value="Review">Review</option><option value="Done">Done</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">시작일</label><input class="form-input" type="date" id="t-start"></div>
+        <div class="form-group"><label class="form-label">종료일</label><input class="form-input" type="date" id="t-end"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">완료율: <span id="t-prog-val">0</span>%</label>
+        <input type="range" id="t-prog" min="0" max="100" value="0" oninput="document.getElementById('t-prog-val').textContent=this.value">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="t-del" style="display:none;margin-right:auto" onclick="delTask()">삭제</button>
+      <button class="btn" onclick="closeModal('add-task')">취소</button>
+      <button class="btn btn-primary" onclick="saveTask()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TEST CASE -->
+<div class="modal-overlay" id="modal-add-tc" style="display:none" onclick="overlayClose(event,'add-tc')">
+  <div class="modal modal-lg">
+    <div class="modal-hdr"><span class="modal-title" id="tc-modal-t">+ Add Test Case</span><button class="modal-close" onclick="closeModal('add-tc')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">TC ID</label><input class="form-input" id="tc-id" readonly style="color:var(--accent);font-weight:700"></div>
+        <div class="form-group"><label class="form-label">관련 요구사항</label><select class="form-select" id="tc-req"><option value="">없음</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">테스트명 *</label><input class="form-input" id="tc-title" placeholder="예: 정상 회원가입 테스트"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">사전조건</label><textarea class="form-textarea" id="tc-pre" placeholder="서버 실행 중, 미가입 이메일"></textarea></div>
+        <div class="form-group"><label class="form-label">입력값</label><textarea class="form-textarea" id="tc-input" placeholder="email=test@test.com, pw=Pass123!"></textarea></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">예상 결과</label><textarea class="form-textarea" id="tc-expected" placeholder="200 OK, 성공 메시지"></textarea></div>
+        <div class="form-group"><label class="form-label">실제 결과</label><textarea class="form-textarea" id="tc-actual" placeholder="테스트 후 기록"></textarea></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">상태</label>
+          <select class="form-select" id="tc-status"><option value="Not Run" selected>Not Run</option><option value="Pass">✅ Pass</option><option value="Fail">❌ Fail</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">담당자</label><input class="form-input" id="tc-owner" placeholder="예: 이테스트"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="tc-del" style="display:none;margin-right:auto" onclick="delTC()">삭제</button>
+      <button class="btn" onclick="closeModal('add-tc')">취소</button>
+      <button class="btn btn-primary" onclick="saveTC()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD API -->
+<div class="modal-overlay" id="modal-add-api" style="display:none" onclick="overlayClose(event,'add-api')">
+  <div class="modal modal-xl">
+    <div class="modal-hdr"><span class="modal-title" id="api-modal-t">+ Add API</span><button class="modal-close" onclick="closeModal('add-api')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">API ID</label><input class="form-input" id="api-id" readonly style="color:var(--accent);font-weight:700"></div>
+        <div class="form-group"><label class="form-label">상태</label>
+          <select class="form-select" id="api-status"><option>Draft</option><option>Review</option><option>Done</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Method</label>
+          <select class="form-select" id="api-method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Endpoint *</label><input class="form-input" id="api-endpoint" placeholder="/api/v1/users"></div>
+      </div>
+      <div class="form-group"><label class="form-label">설명</label><input class="form-input" id="api-desc" placeholder="예: 사용자 회원가입 API"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">관련 요구사항</label><select class="form-select" id="api-req"><option value="">없음</option></select></div>
+        <div class="form-group"><label class="form-label">담당자</label><input class="form-input" id="api-owner" placeholder="예: 박준혁"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Request Body (JSON)</label><textarea class="form-textarea" id="api-req-body" placeholder='{"email":"string","password":"string","name":"string"}'></textarea></div>
+        <div class="form-group"><label class="form-label">Response Body (JSON)</label><textarea class="form-textarea" id="api-res-body" placeholder='{"status":201,"message":"Created","data":{"id":1}}'></textarea></div>
+      </div>
+      <div class="form-group"><label class="form-label">Error Codes</label><input class="form-input" id="api-errors" placeholder="400 Bad Request, 409 Conflict, 500 Internal Server Error"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="api-del" style="display:none;margin-right:auto" onclick="delAPI()">삭제</button>
+      <button class="btn" onclick="closeModal('add-api')">취소</button>
+      <button class="btn btn-primary" onclick="saveAPI()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD RISK -->
+<div class="modal-overlay" id="modal-add-risk" style="display:none" onclick="overlayClose(event,'add-risk')">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="risk-modal-t">+ Add Risk</span><button class="modal-close" onclick="closeModal('add-risk')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Risk ID</label><input class="form-input" id="risk-id" readonly style="color:var(--red);font-weight:700"></div>
+        <div class="form-group"><label class="form-label">상태</label>
+          <select class="form-select" id="risk-status"><option>Open</option><option>Mitigated</option><option>Closed</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">리스크명 *</label><input class="form-input" id="risk-title" placeholder="예: 개발 일정 지연"></div>
+      <div class="form-group"><label class="form-label">설명</label><textarea class="form-textarea" id="risk-desc" placeholder="리스크 상세 설명"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">영향도</label>
+          <select class="form-select" id="risk-impact"><option>High</option><option selected>Medium</option><option>Low</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">발생 가능성</label>
+          <select class="form-select" id="risk-prob"><option>High</option><option selected>Medium</option><option>Low</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">대응 전략</label><textarea class="form-textarea" id="risk-mitigation" placeholder="이 리스크를 어떻게 줄일 것인가?"></textarea></div>
+      <div class="form-group"><label class="form-label">담당자</label><input class="form-input" id="risk-owner" placeholder="예: 김PM"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="risk-del" style="display:none;margin-right:auto" onclick="delRisk()">삭제</button>
+      <button class="btn" onclick="closeModal('add-risk')">취소</button>
+      <button class="btn btn-primary" onclick="saveRisk()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MEETING -->
+<div class="modal-overlay" id="modal-add-meeting" style="display:none" onclick="overlayClose(event,'add-meeting')">
+  <div class="modal modal-lg">
+    <div class="modal-hdr"><span class="modal-title" id="mtg-modal-t">+ New Meeting</span><button class="modal-close" onclick="closeModal('add-meeting')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">회의 제목 *</label><input class="form-input" id="mtg-title" placeholder="예: 스프린트 1 킥오프"></div>
+        <div class="form-group"><label class="form-label">날짜</label><input class="form-input" type="date" id="mtg-date"></div>
+      </div>
+      <div class="form-group"><label class="form-label">참석자</label><input class="form-input" id="mtg-attendees" placeholder="김PM, 이FE, 박BE, 최QA"></div>
+      <div class="form-group"><label class="form-label">안건</label><textarea class="form-textarea" id="mtg-agenda" placeholder="1. 요구사항 검토&#10;2. 일정 협의&#10;3. 역할 분담"></textarea></div>
+      <div class="form-group"><label class="form-label">논의 내용</label><textarea class="form-textarea" id="mtg-discussion" placeholder="회의에서 논의된 주요 내용"></textarea></div>
+      <div class="form-group"><label class="form-label">결정사항</label><textarea class="form-textarea" id="mtg-decision" placeholder="이 회의에서 결정된 사항들"></textarea></div>
+      <div class="form-group"><label class="form-label">액션 아이템 (줄바꿈으로 구분)</label><textarea class="form-textarea" id="mtg-actions" placeholder="[김PM] 요구사항 문서 최종 확인&#10;[이FE] 와이어프레임 작성&#10;[박BE] DB 스키마 초안 작성"></textarea></div>
+      <div class="form-group"><label class="form-label">다음 회의 일정</label><input class="form-input" type="date" id="mtg-next"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="mtg-del" style="display:none;margin-right:auto" onclick="delMeeting()">삭제</button>
+      <button class="btn" onclick="closeModal('add-meeting')">취소</button>
+      <button class="btn btn-primary" onclick="saveMeeting()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+const LS_KEY = 'devgym_pos_v3';
+let S = loadState();
+let editIds = {req:null, task:null, tc:null, api:null, risk:null, meeting:null};
+let curMtgId = null;
+
+// ── STATE ──────────────────────────────────────────────────────
+function defaultState() {
+  return {
+    project: {name:'',status:'Planning',tagline:'',start:'',end:'',members:'',roles:'',purpose:'',problem:'',users:'',value:'',features:'',success:''},
+    requirements: [], tasks: [], testCases: [], apis: [], risks: [], meetings: [],
+    _seq: {FR:0, NFR:0, TASK:0, TC:0, API:0, RISK:0, MTG:0}
+  };
+}
+function loadState() {
+  try { const s = localStorage.getItem(LS_KEY); if (s) return Object.assign(defaultState(), JSON.parse(s)); } catch(e) {}
+  return defaultState();
+}
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e) {}
+}
+
+// ── SAMPLE DATA ────────────────────────────────────────────────
+function loadSample() {
+  if (S.requirements.length > 0 && !confirm('기존 데이터를 샘플로 교체합니다. 계속하시겠습니까?')) return;
+  S = defaultState();
+  S.project = {
+    name:'DevGym ProjectOS', status:'In Progress',
+    tagline:'PM과 개발자를 위한 올인원 프로젝트 관리 OS',
+    start:'2025-03-01', end:'2025-06-30',
+    members:'김민준(PM), 이서연(FE), 박준혁(BE), 최지아(QA)',
+    roles:'- 김민준: PM, 요구사항 정의, 일정 관리\n- 이서연: 프론트엔드 React 개발\n- 박준혁: 백엔드 API 개발\n- 최지아: 테스트 케이스 작성 및 QA',
+    purpose:'사이드 프로젝트, 졸업작품, 실무 프로젝트에서 바로 사용할 수 있는 PM 도구 제공',
+    problem:'엑셀+노션+지라를 따로 쓰면서 데이터 파편화, 추적 불가능한 문제 해결',
+    users:'사이드 프로젝트 팀, 졸업작품 팀, 스타트업 초기 개발팀',
+    value:'요구사항부터 배포까지 하나의 도구에서, 모든 항목이 연결된 추적 가능한 PM',
+    features:'- 요구사항 관리(FR/NFR)\n- WBS/칸반 보드\n- 테스트 케이스\n- Timeline/Gantt\n- API Spec\n- Risk Management\n- Meeting Notes\n- Export(MD/TSV/JSON)',
+    success:'팀원 3명 이상 실제 사용, 문서 작업 시간 50% 단축'
+  };
+  S._seq = {FR:7, NFR:3, TASK:14, TC:10, API:5, RISK:3, MTG:2};
+
+  S.requirements = [
+    {id:'FR-001',type:'FR',title:'회원가입',desc:'이메일, 비밀번호, 이름으로 가입. 이메일 중복 체크 필수.',priority:'High',status:'Done',owner:'박준혁',createdAt:'2025-03-05',updatedAt:'2025-03-10'},
+    {id:'FR-002',type:'FR',title:'로그인/로그아웃',desc:'이메일+비밀번호 로그인, JWT 토큰 발급, 로그아웃 시 토큰 무효화.',priority:'High',status:'Done',owner:'박준혁',createdAt:'2025-03-05',updatedAt:'2025-03-10'},
+    {id:'FR-003',type:'FR',title:'요구사항 관리',desc:'FR/NFR 추가, 수정, 삭제. 자동 ID 생성.',priority:'High',status:'In Progress',owner:'이서연',createdAt:'2025-03-06',updatedAt:'2025-03-15'},
+    {id:'FR-004',type:'FR',title:'WBS/칸반 보드',desc:'작업 추가/수정/삭제, 칸반 상태 변경, WBS 테이블.',priority:'High',status:'In Progress',owner:'이서연',createdAt:'2025-03-06',updatedAt:'2025-03-15'},
+    {id:'FR-005',type:'FR',title:'테스트 케이스 관리',desc:'TC 추가/수정/삭제, 요구사항 연결, 결과 기록.',priority:'Medium',status:'In Progress',owner:'최지아',createdAt:'2025-03-07',updatedAt:'2025-03-16'},
+    {id:'FR-006',type:'FR',title:'Export 기능',desc:'Markdown, TSV, JSON 내보내기. RTM 자동 생성.',priority:'Medium',status:'To Do',owner:'이서연',createdAt:'2025-03-07',updatedAt:'2025-03-16'},
+    {id:'FR-007',type:'FR',title:'Dashboard',desc:'프로젝트 현황 요약. 통계, 진행률, Quick Actions.',priority:'Medium',status:'In Progress',owner:'이서연',createdAt:'2025-03-08',updatedAt:'2025-03-17'},
+    {id:'NFR-001',type:'NFR',title:'로딩 성능',desc:'초기 로딩 3초 이내. Lighthouse 90점 이상.',priority:'Medium',status:'Approved',owner:'이서연',createdAt:'2025-03-05',updatedAt:'2025-03-10'},
+    {id:'NFR-002',type:'NFR',title:'데이터 영속성',desc:'localStorage 기반. 새로고침 후에도 유지.',priority:'High',status:'Done',owner:'박준혁',createdAt:'2025-03-05',updatedAt:'2025-03-10'},
+    {id:'NFR-003',type:'NFR',title:'반응형 UI',desc:'1024px 이상 해상도 지원.',priority:'Low',status:'Draft',owner:'이서연',createdAt:'2025-03-05',updatedAt:'2025-03-10'},
+  ];
+
+  S.tasks = [
+    {id:'TASK-001',title:'DB 스키마 설계',desc:'users, projects, requirements, tasks 테이블 설계',phase:'설계',reqId:'FR-001',owner:'박준혁',priority:'High',status:'Done',startDate:'2025-03-01',endDate:'2025-03-05',progress:100,createdAt:'2025-03-01'},
+    {id:'TASK-002',title:'회원가입 API 개발',desc:'POST /auth/signup 구현. 이메일 중복 체크 포함.',phase:'개발',reqId:'FR-001',owner:'박준혁',priority:'High',status:'Done',startDate:'2025-03-06',endDate:'2025-03-10',progress:100,createdAt:'2025-03-06'},
+    {id:'TASK-003',title:'로그인 API 개발',desc:'POST /auth/login, JWT 발급, 리프레시 토큰.',phase:'개발',reqId:'FR-002',owner:'박준혁',priority:'High',status:'Done',startDate:'2025-03-10',endDate:'2025-03-15',progress:100,createdAt:'2025-03-10'},
+    {id:'TASK-004',title:'회원가입 UI',desc:'React 회원가입 폼. 유효성 검사 포함.',phase:'개발',reqId:'FR-001',owner:'이서연',priority:'High',status:'Done',startDate:'2025-03-08',endDate:'2025-03-12',progress:100,createdAt:'2025-03-08'},
+    {id:'TASK-005',title:'로그인 UI',desc:'로그인 폼, 토큰 저장, 라우터 가드.',phase:'개발',reqId:'FR-002',owner:'이서연',priority:'High',status:'Done',startDate:'2025-03-13',endDate:'2025-03-18',progress:100,createdAt:'2025-03-13'},
+    {id:'TASK-006',title:'요구사항 목록 UI',desc:'FR/NFR 테이블, 카드 뷰, 필터.',phase:'개발',reqId:'FR-003',owner:'이서연',priority:'High',status:'In Progress',startDate:'2025-03-19',endDate:'2025-03-26',progress:70,createdAt:'2025-03-19'},
+    {id:'TASK-007',title:'요구사항 CRUD API',desc:'GET/POST/PUT/DELETE /requirements',phase:'개발',reqId:'FR-003',owner:'박준혁',priority:'High',status:'In Progress',startDate:'2025-03-19',endDate:'2025-03-24',progress:80,createdAt:'2025-03-19'},
+    {id:'TASK-008',title:'칸반 보드 UI',desc:'5컬럼 칸반, 상태 변경, 카드 CRUD.',phase:'개발',reqId:'FR-004',owner:'이서연',priority:'High',status:'In Progress',startDate:'2025-03-24',endDate:'2025-04-02',progress:50,createdAt:'2025-03-24'},
+    {id:'TASK-009',title:'WBS 테이블 뷰',desc:'작업 목록 테이블, 진행률 바.',phase:'개발',reqId:'FR-004',owner:'이서연',priority:'Medium',status:'To Do',startDate:'2025-04-01',endDate:'2025-04-06',progress:0,createdAt:'2025-04-01'},
+    {id:'TASK-010',title:'테스트케이스 UI',desc:'TC 테이블, 상태 드롭다운.',phase:'개발',reqId:'FR-005',owner:'이서연',priority:'Medium',status:'To Do',startDate:'2025-04-05',endDate:'2025-04-12',progress:0,createdAt:'2025-04-05'},
+    {id:'TASK-011',title:'RTM 자동 생성',desc:'요구사항-태스크-TC 연결 매트릭스.',phase:'개발',reqId:'FR-006',owner:'이서연',priority:'Medium',status:'Backlog',startDate:'2025-04-10',endDate:'2025-04-16',progress:0,createdAt:'2025-04-10'},
+    {id:'TASK-012',title:'Export 기능',desc:'Markdown, TSV, JSON 다운로드.',phase:'개발',reqId:'FR-006',owner:'이서연',priority:'Medium',status:'Backlog',startDate:'2025-04-14',endDate:'2025-04-20',progress:0,createdAt:'2025-04-14'},
+    {id:'TASK-013',title:'Dashboard 통계',desc:'현황 통계 카드, 진행률.',phase:'개발',reqId:'FR-007',owner:'이서연',priority:'Medium',status:'Review',startDate:'2025-03-25',endDate:'2025-03-30',progress:90,createdAt:'2025-03-25'},
+    {id:'TASK-014',title:'통합 테스트',desc:'E2E 테스트. 크로스 브라우저 검증.',phase:'테스트',reqId:'',owner:'최지아',priority:'High',status:'Backlog',startDate:'2025-04-20',endDate:'2025-04-28',progress:0,createdAt:'2025-04-20'},
+  ];
+
+  S.testCases = [
+    {id:'TC-001',title:'정상 회원가입',reqId:'FR-001',precondition:'서버 실행 중, 미가입 이메일',input:'email=test@test.com, pw=Pass123!, name=홍길동',expected:'201 Created, 성공 메시지',actual:'201 Created ✓',status:'Pass',owner:'최지아',createdAt:'2025-03-20'},
+    {id:'TC-002',title:'중복 이메일 차단',reqId:'FR-001',precondition:'test@test.com 가입된 상태',input:'email=test@test.com',expected:'409 Conflict',actual:'409 Conflict ✓',status:'Pass',owner:'최지아',createdAt:'2025-03-20'},
+    {id:'TC-003',title:'비밀번호 형식 오류',reqId:'FR-001',precondition:'서버 실행 중',input:'pw=1234(약한)',expected:'400 Bad Request',actual:'400 ✓',status:'Pass',owner:'최지아',createdAt:'2025-03-20'},
+    {id:'TC-004',title:'정상 로그인',reqId:'FR-002',precondition:'test@test.com 가입 완료',input:'email=test@test.com, pw=Pass123!',expected:'200 OK, JWT 반환',actual:'200 OK ✓',status:'Pass',owner:'최지아',createdAt:'2025-03-21'},
+    {id:'TC-005',title:'잘못된 비밀번호',reqId:'FR-002',precondition:'가입 완료',input:'pw=Wrong!',expected:'401 Unauthorized',actual:'',status:'Not Run',owner:'최지아',createdAt:'2025-03-21'},
+    {id:'TC-006',title:'요구사항 추가',reqId:'FR-003',precondition:'로그인 완료',input:'FR, 제목=테스트',expected:'FR-N 자동 생성',actual:'',status:'Not Run',owner:'최지아',createdAt:'2025-03-22'},
+    {id:'TC-007',title:'요구사항 필터',reqId:'FR-003',precondition:'FR 5개, NFR 3개',input:'필터: FR',expected:'FR만 표시',actual:'',status:'Not Run',owner:'최지아',createdAt:'2025-03-22'},
+    {id:'TC-008',title:'칸반 상태 변경',reqId:'FR-004',precondition:'Backlog 태스크 1개',input:'→To Do 버튼',expected:'To Do 컬럼 이동',actual:'동작 확인 ✓',status:'Pass',owner:'최지아',createdAt:'2025-03-23'},
+    {id:'TC-009',title:'TC 결과 기록',reqId:'FR-005',precondition:'TC-001 존재',input:'Status=Pass',expected:'즉시 업데이트',actual:'',status:'Fail',owner:'최지아',createdAt:'2025-03-24'},
+    {id:'TC-010',title:'JSON 백업',reqId:'FR-006',precondition:'데이터 존재',input:'Export JSON',expected:'.json 다운로드',actual:'',status:'Not Run',owner:'최지아',createdAt:'2025-03-25'},
+  ];
+
+  S.apis = [
+    {id:'API-001',method:'POST',endpoint:'/api/v1/auth/signup',desc:'회원가입 API',reqId:'FR-001',owner:'박준혁',status:'Done',reqBody:'{"email":"string","password":"string","name":"string"}',resBody:'{"status":201,"message":"Created","data":{"id":1,"email":"string"}}',errors:'400 Bad Request, 409 Conflict',createdAt:'2025-03-06'},
+    {id:'API-002',method:'POST',endpoint:'/api/v1/auth/login',desc:'로그인 API, JWT 발급',reqId:'FR-002',owner:'박준혁',status:'Done',reqBody:'{"email":"string","password":"string"}',resBody:'{"status":200,"token":"jwt_token","refreshToken":"refresh_token"}',errors:'401 Unauthorized, 404 Not Found',createdAt:'2025-03-10'},
+    {id:'API-003',method:'GET',endpoint:'/api/v1/requirements',desc:'요구사항 목록 조회',reqId:'FR-003',owner:'박준혁',status:'Review',reqBody:'',resBody:'{"status":200,"data":[{"id":"FR-001","title":"..."}]}',errors:'401 Unauthorized',createdAt:'2025-03-19'},
+    {id:'API-004',method:'POST',endpoint:'/api/v1/requirements',desc:'요구사항 생성',reqId:'FR-003',owner:'박준혁',status:'Review',reqBody:'{"type":"FR","title":"string","description":"string","priority":"High"}',resBody:'{"status":201,"data":{"id":"FR-N"}}',errors:'400 Bad Request, 401 Unauthorized',createdAt:'2025-03-19'},
+    {id:'API-005',method:'GET',endpoint:'/api/v1/tasks',desc:'태스크 목록 조회',reqId:'FR-004',owner:'박준혁',status:'Draft',reqBody:'',resBody:'{"status":200,"data":[]}',errors:'401 Unauthorized',createdAt:'2025-03-24'},
+  ];
+
+  S.risks = [
+    {id:'RISK-001',title:'개발 일정 지연',desc:'예상보다 복잡한 기능 구현으로 스프린트 목표 미달 가능성',impact:'High',probability:'Medium',mitigation:'MVP 범위 축소, 주간 스프린트 리뷰, 버퍼 2주 확보',owner:'김민준',status:'Open',createdAt:'2025-03-05'},
+    {id:'RISK-002',title:'팀원 이탈',desc:'사이드 프로젝트 특성상 참여율 저하 및 팀원 중도 이탈 위험',impact:'High',probability:'Low',mitigation:'역할 분산, 코드 리뷰 문화 정착, 주 1회 미팅 유지',owner:'김민준',status:'Open',createdAt:'2025-03-05'},
+    {id:'RISK-003',title:'localStorage 용량 한계',desc:'데이터 증가 시 localStorage 5MB 한계 도달 가능',impact:'Medium',probability:'Low',mitigation:'IndexedDB 또는 Supabase 마이그레이션 플랜 준비',owner:'박준혁',status:'Mitigated',createdAt:'2025-03-10'},
+  ];
+
+  S.meetings = [
+    {id:'MTG-001',title:'프로젝트 킥오프',date:'2025-03-01',attendees:'김민준, 이서연, 박준혁, 최지아',agenda:'1. 프로젝트 목표 공유\n2. 역할 분담\n3. 일정 협의',discussion:'ProjectOS 목표와 범위를 팀 전체에 공유. MVP 범위를 6개 메뉴로 확정.',decision:'MVP: Dashboard, Brief, Requirements, WBS, TC, Export. 2차: Timeline, API, Risk, Meeting',actions:'[김민준] 요구사항 문서 초안 작성\n[이서연] 와이어프레임 작성\n[박준혁] DB 스키마 설계\n[최지아] TC 템플릿 준비',nextMeeting:'2025-03-08',createdAt:'2025-03-01'},
+    {id:'MTG-002',title:'스프린트 1 리뷰',date:'2025-03-15',attendees:'김민준, 이서연, 박준혁, 최지아',agenda:'1. 스프린트 1 결과 공유\n2. 이슈 논의\n3. 스프린트 2 계획',discussion:'회원가입/로그인 API 완료. UI 작업 80% 진행. DB 스키마 확정.',decision:'스프린트 2: 요구사항 관리 + 칸반 보드 집중. 기간: 3/16~3/31',actions:'[이서연] 요구사항 UI 개발 시작\n[박준혁] 요구사항 API 개발\n[최지아] TC-001~005 실행',nextMeeting:'2025-03-22',createdAt:'2025-03-15'},
+  ];
+
+  save();
+  renderAll();
+  updateBadges();
+  updateStatusUI();
+  toast('✓ 샘플 데이터 로드 완료 — DevGym ProjectOS 시작!', 'ok');
+}
+
+// ── NAVIGATION ──────────────────────────────────────────────────
+function nav(p) {
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-item[data-p]').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  const ni = document.querySelector('.nav-item[data-p="' + p + '"]');
+  if (ni) ni.classList.add('active');
+  const fn = {
+    dashboard: renderDashboard, requirements: renderReqs, tasks: renderTasks,
+    testcases: renderTCs, timeline: renderTimeline, apispec: renderAPIs,
+    risk: renderRisks, meeting: renderMeetings, export: renderExport, brief: loadBrief
+  };
+  if (fn[p]) fn[p]();
+}
+
+function renderAll() {
+  renderDashboard();
+}
+
+// ── MODALS ──────────────────────────────────────────────────────
+function openModal(name) {
+  const init = {
+    'add-req': initReqModal, 'add-task': initTaskModal,
+    'add-tc': initTCModal, 'add-api': initAPIModal,
+    'add-risk': initRiskModal, 'add-meeting': initMeetingModal,
+    'settings': initSettings
+  };
+  if (init[name]) init[name]();
+  document.getElementById('modal-' + name).style.display = 'flex';
+}
+function closeModal(name) { document.getElementById('modal-' + name).style.display = 'none'; }
+function overlayClose(e, name) { if (e.target === document.getElementById('modal-' + name)) closeModal(name); }
+
+// ── HELPERS ─────────────────────────────────────────────────────
+const v = id => document.getElementById(id)?.value || '';
+const sv = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+const today = () => new Date().toISOString().slice(0, 10);
+const nextId = (type) => { S._seq[type] = (S._seq[type] || 0) + 1; return type + '-' + String(S._seq[type]).padStart(3, '0'); };
+const peekId = (type) => type + '-' + String((S._seq[type] || 0) + 1).padStart(3, '0');
+
+function dl(content, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + content], {type: 'text/plain;charset=utf-8'}));
+  a.download = filename; a.click();
+}
+
+function fillSelect(id, items, labelFn, selected, empty = true) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  sel.innerHTML = empty ? '<option value="">없음</option>' : '';
+  items.forEach(item => {
+    const op = document.createElement('option');
+    op.value = item.id; op.textContent = labelFn(item);
+    if (item.id === selected) op.selected = true;
+    sel.appendChild(op);
+  });
+}
+
+function statusBadge(s) {
+  const m = {
+    Draft:'b-gray', Approved:'b-cyan', 'In Progress':'b-amber', Done:'b-green',
+    'To Do':'b-blue', Backlog:'b-gray', Review:'b-purple',
+    'Not Run':'b-gray', Pass:'b-green', Fail:'b-red',
+    Planning:'b-blue', Testing:'b-purple', Open:'b-red', Mitigated:'b-amber', Closed:'b-green'
+  };
+  return `<span class="badge ${m[s]||'b-gray'}">${s}</span>`;
+}
+
+function prioColor(p) {
+  return p === 'High' ? 'dot-high' : p === 'Low' ? 'dot-low' : 'dot-med';
+}
+
+function isOverdue(d) { return d && new Date(d) < new Date(); }
+
+function updateBadges() {
+  sv('nb-req', S.requirements.length);
+  sv('nb-task', S.tasks.length);
+  sv('nb-tc', S.testCases.length);
+  sv('nb-api', S.apis.length);
+  sv('nb-risk', S.risks.length);
+  sv('nb-mtg', S.meetings.length);
+  // nav-badge elements need textContent not value
+  ['req','task','tc','api','risk','mtg'].forEach(k => {
+    const el = document.getElementById('nb-'+k);
+    if (el) el.textContent = S[k==='req'?'requirements':k==='task'?'tasks':k==='tc'?'testCases':k==='api'?'apis':k==='risk'?'risks':'meetings'].length;
+  });
+}
+
+function updateStatusUI() {
+  const p = S.project;
+  document.getElementById('topbar-pname').textContent = p.name || '—';
+  const pill = document.getElementById('status-pill');
+  const map = {Planning:'planning', 'In Progress':'inprogress', Testing:'testing', Done:'done'};
+  pill.className = 'status-pill ' + (map[p.status] || 'planning');
+  document.getElementById('status-text').textContent = p.status.toUpperCase();
+}
+
+// ── SETTINGS ────────────────────────────────────────────────────
+function initSettings() { sv('ps-name', S.project.name); sv('ps-status', S.project.status); }
+function saveSettings() {
+  S.project.name = v('ps-name'); S.project.status = v('ps-status');
+  save(); closeModal('settings'); updateStatusUI(); renderDashboard();
+  toast('✓ 설정 저장됨', 'ok');
+}
+
+// ── BRIEF ───────────────────────────────────────────────────────
+function loadBrief() {
+  const p = S.project;
+  ['name','tagline','start','end','members','roles','purpose','problem','users','value','features','success','status'].forEach(k => sv('b-'+k, p[k]));
+}
+function saveBrief() {
+  const p = S.project;
+  ['name','tagline','start','end','members','roles','purpose','problem','users','value','features','success','status'].forEach(k => { p[k] = v('b-'+k); });
+  save(); updateStatusUI(); renderDashboard();
+  toast('✓ Project Brief 저장됨', 'ok');
+}
+function copyBriefMd() {
+  const p = S.project;
+  const md = `# ${p.name||'Project Brief'}\n> ${p.tagline||''}\n\n**Status:** ${p.status} | **Period:** ${p.start||'?'} ~ ${p.end||'?'}\n\n---\n\n## 목적\n${p.purpose||''}\n\n## 해결 문제\n${p.problem||''}\n\n## 대상 사용자\n${p.users||''}\n\n## 핵심 가치\n${p.value||''}\n\n## 주요 기능\n${p.features||''}\n\n## 성공 기준\n${p.success||''}\n\n## 팀원\n${p.members||''}\n\n## 역할 분담\n${p.roles||''}`;
+  navigator.clipboard.writeText(md).then(() => toast('✓ Markdown 복사됨', 'ok'));
+}
+
+// ── REQUIREMENTS ────────────────────────────────────────────────
+function initReqModal(id) {
+  editIds.req = id || null;
+  const isEdit = !!id;
+  document.getElementById('req-modal-t').textContent = isEdit ? '✎ Edit Requirement' : '+ Add Requirement';
+  document.getElementById('r-del').style.display = isEdit ? '' : 'none';
+  if (isEdit) {
+    const r = S.requirements.find(x => x.id === id);
+    sv('r-type', r.type); sv('r-id', r.id); sv('r-title', r.title);
+    sv('r-desc', r.desc); sv('r-priority', r.priority);
+    sv('r-status', r.status); sv('r-owner', r.owner);
+  } else {
+    sv('r-type', 'FR'); sv('r-title',''); sv('r-desc',''); sv('r-owner','');
+    sv('r-priority','Medium'); sv('r-status','Draft');
+    previewReqId();
+  }
+}
+function previewReqId() { sv('r-id', peekId(v('r-type'))); }
+function saveReq() {
+  const title = v('r-title').trim();
+  if (!title) { hiErr('r-title'); toast('제목을 입력하세요','err'); return; }
+  const type = v('r-type');
+  if (editIds.req) {
+    const r = S.requirements.find(x => x.id === editIds.req);
+    Object.assign(r, {title, type, desc:v('r-desc'), priority:v('r-priority'), status:v('r-status'), owner:v('r-owner'), updatedAt:today()});
+  } else {
+    const id = nextId(type);
+    S.requirements.push({id, type, title, desc:v('r-desc'), priority:v('r-priority'), status:v('r-status'), owner:v('r-owner'), createdAt:today(), updatedAt:today()});
+  }
+  save(); closeModal('add-req'); renderReqs(); updateBadges(); renderDashboard();
+  toast(editIds.req ? '✓ 요구사항 수정됨' : '✓ 요구사항 추가됨', 'ok');
+}
+function delReq() {
+  if (!confirm('요구사항을 삭제하시겠습니까?\n연결된 Task/TC/API의 reqId가 초기화됩니다.')) return;
+  const id = editIds.req;
+  S.requirements = S.requirements.filter(x => x.id !== id);
+  ['tasks','testCases','apis'].forEach(k => S[k].forEach(x => { if (x.reqId === id) x.reqId = ''; }));
+  save(); closeModal('add-req'); renderReqs(); updateBadges(); renderDashboard();
+  toast('삭제됨', 'info');
+}
+function renderReqs() {
+  const tf = v('rf-type'), pf = v('rf-priority'), sf = v('rf-status');
+  const reqs = S.requirements.filter(r => (!tf||r.type===tf) && (!pf||r.priority===pf) && (!sf||r.status===sf));
+  const tbody = document.getElementById('req-tbody');
+  tbody.innerHTML = reqs.length ? reqs.map(r => {
+    const tasks = S.tasks.filter(t => t.reqId === r.id);
+    const apis = S.apis.filter(a => a.reqId === r.id);
+    const tcs = S.testCases.filter(t => t.reqId === r.id);
+    return `<tr>
+      <td class="td-id" onclick="initReqModal('${r.id}');openModal('add-req')">${r.id}</td>
+      <td><div style="font-weight:500">${r.title}</div>${r.desc?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${r.desc.slice(0,60)}${r.desc.length>60?'…':''}</div>`:''}</td>
+      <td><span class="badge ${r.type==='FR'?'b-blue':'b-purple'}">${r.type}</span></td>
+      <td><span class="dot ${prioColor(r.priority)}" style="margin-right:4px"></span><span style="font-size:11px;color:var(--t2)">${r.priority}</span></td>
+      <td>${statusBadge(r.status)}</td>
+      <td style="color:var(--t2);font-size:12px">${r.owner||'—'}</td>
+      <td>${tasks.map(t=>`<span class="chip chip-gray">${t.id}</span>`).join('')||'<span style="color:var(--t4);font-size:11px">—</span>'}</td>
+      <td>${apis.map(a=>`<span class="chip" style="font-size:9px">${a.method} ${a.endpoint.slice(0,15)}</span>`).join('')||'<span style="color:var(--t4);font-size:11px">—</span>'}</td>
+      <td>${tcs.map(t=>`<span class="chip ${t.status==='Pass'?'chip-green':t.status==='Fail'?'chip-red':''}">${t.id}</span>`).join('')||'<span style="color:var(--t4);font-size:11px">—</span>'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="initReqModal('${r.id}');openModal('add-req')">✎</button></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--t3)">요구사항을 추가하세요. '+ Add' 버튼을 클릭하거나 '⚡ Load Demo'로 시작하세요.</td></tr>`;
+
+  // Card view
+  const cv = document.getElementById('req-card-view');
+  cv.innerHTML = reqs.map(r => {
+    const tasks = S.tasks.filter(t => t.reqId === r.id);
+    const tcs = S.testCases.filter(t => t.reqId === r.id);
+    return `<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="td-id" style="cursor:pointer" onclick="initReqModal('${r.id}');openModal('add-req')">${r.id}</span>
+        <span style="font-weight:600;flex:1;font-size:13px">${r.title}</span>
+        <span class="badge ${r.type==='FR'?'b-blue':'b-purple'}">${r.type}</span>
+        ${statusBadge(r.status)}
+        <button class="btn btn-ghost btn-sm" onclick="initReqModal('${r.id}');openModal('add-req')">✎</button>
+      </div>
+      ${r.desc?`<div style="font-size:12px;color:var(--t2);margin-bottom:8px;line-height:1.6">${r.desc}</div>`:''}
+      <div style="display:flex;gap:16px;font-size:11px;color:var(--t3);margin-bottom:6px">
+        <span>담당: <span style="color:var(--t2)">${r.owner||'—'}</span></span>
+        <span><span class="dot ${prioColor(r.priority)}" style="margin-right:3px"></span>${r.priority}</span>
+        <span>수정: ${r.updatedAt||r.createdAt||''}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px">
+        ${tasks.map(t=>`<span class="chip chip-gray">↳ ${t.id} ${t.title.slice(0,18)}</span>`).join('')}
+        ${tcs.map(t=>`<span class="chip ${t.status==='Pass'?'chip-green':t.status==='Fail'?'chip-red':''}">✓ ${t.id}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+function switchReqTab(t) {
+  document.getElementById('req-tab-tbl').classList.toggle('active', t==='table');
+  document.getElementById('req-tab-card').classList.toggle('active', t==='card');
+  document.getElementById('req-tbl-view').style.display = t==='table' ? '' : 'none';
+  document.getElementById('req-card-view').style.display = t==='card' ? '' : 'none';
+}
+
+// ── TASKS ───────────────────────────────────────────────────────
+const KCOLS = [
+  {key:'Backlog',   label:'Backlog',      color:'var(--t3)'},
+  {key:'To Do',     label:'To Do',        color:'var(--cyan)'},
+  {key:'In Progress',label:'In Progress', color:'var(--amber)'},
+  {key:'Review',    label:'Review',       color:'var(--purple)'},
+  {key:'Done',      label:'Done',         color:'var(--green)'}
+];
+
+function initTaskModal(id, defaultStatus) {
+  editIds.task = id || null;
+  const isEdit = !!id;
+  document.getElementById('task-modal-t').textContent = isEdit ? '✎ Edit Task' : '+ Add Task';
+  document.getElementById('t-del').style.display = isEdit ? '' : 'none';
+  fillSelect('t-req', S.requirements, r => r.id + ' — ' + r.title, '', true);
+  if (isEdit) {
+    const t = S.tasks.find(x => x.id === id);
+    sv('t-id',t.id); sv('t-title',t.title); sv('t-desc',t.desc);
+    sv('t-phase',t.phase); sv('t-req',t.reqId); sv('t-owner',t.owner);
+    sv('t-priority',t.priority); sv('t-status',t.status);
+    sv('t-start',t.startDate); sv('t-end',t.endDate);
+    const prog = t.progress||0;
+    document.getElementById('t-prog').value = prog;
+    document.getElementById('t-prog-val').textContent = prog;
+  } else {
+    sv('t-id', peekId('TASK')); sv('t-title',''); sv('t-desc','');
+    sv('t-phase','개발'); sv('t-req',''); sv('t-owner','');
+    sv('t-priority','Medium'); sv('t-status', defaultStatus||'Backlog');
+    sv('t-start',''); sv('t-end','');
+    document.getElementById('t-prog').value = 0;
+    document.getElementById('t-prog-val').textContent = 0;
+  }
+}
+function saveTask() {
+  const title = v('t-title').trim();
+  if (!title) { hiErr('t-title'); toast('작업명을 입력하세요','err'); return; }
+  const prog = parseInt(v('t-prog'))||0;
+  if (editIds.task) {
+    const t = S.tasks.find(x => x.id === editIds.task);
+    Object.assign(t, {title, desc:v('t-desc'), phase:v('t-phase'), reqId:v('t-req'), owner:v('t-owner'), priority:v('t-priority'), status:v('t-status'), startDate:v('t-start'), endDate:v('t-end'), progress:prog});
+  } else {
+    const id = nextId('TASK');
+    S.tasks.push({id, title, desc:v('t-desc'), phase:v('t-phase'), reqId:v('t-req'), owner:v('t-owner'), priority:v('t-priority'), status:v('t-status'), startDate:v('t-start'), endDate:v('t-end'), progress:prog, createdAt:today()});
+  }
+  save(); closeModal('add-task'); renderTasks(); updateBadges(); renderDashboard();
+  toast(editIds.task ? '✓ 작업 수정됨' : '✓ 작업 추가됨', 'ok');
+}
+function delTask() {
+  if (!confirm('작업을 삭제하시겠습니까?')) return;
+  S.tasks = S.tasks.filter(x => x.id !== editIds.task);
+  save(); closeModal('add-task'); renderTasks(); updateBadges(); renderDashboard();
+  toast('삭제됨','info');
+}
+function moveTask(id, status) {
+  const t = S.tasks.find(x => x.id === id);
+  if (t) { t.status = status; if (status==='Done') t.progress = 100; save(); renderTasks(); renderDashboard(); }
+}
+function renderTasks() {
+  const of = v('tf-owner'), pf = v('tf-phase');
+  // update owner filter
+  const owners = [...new Set(S.tasks.map(t=>t.owner).filter(Boolean))];
+  const owSel = document.getElementById('tf-owner');
+  const curO = owSel.value;
+  owSel.innerHTML = '<option value="">All Members</option>';
+  owners.forEach(o => { const op = document.createElement('option'); op.value=o; op.textContent=o; if(o===curO)op.selected=true; owSel.appendChild(op); });
+
+  const tasks = S.tasks.filter(t => (!of||t.owner===of) && (!pf||t.phase===pf));
+
+  // Kanban
+  document.getElementById('kanban-board').innerHTML = KCOLS.map(col => {
+    const ct = tasks.filter(t => t.status === col.key);
+    return `<div class="kanban-col">
+      <div class="kanban-col-hdr">
+        <span class="kanban-col-name" style="color:${col.color}">${col.label}</span>
+        <span class="kanban-col-cnt">${ct.length}</span>
+      </div>
+      <div class="kanban-cards">
+        ${ct.map(t => {
+          const req = S.requirements.find(r => r.id === t.reqId);
+          const moveBtns = KCOLS.filter(c => c.key !== col.key).map(c =>
+            `<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 5px;color:${c.color}" onclick="moveTask('${t.id}','${c.key}')" title="→ ${c.label}">${c.label.slice(0,3)}${c.key==='In Progress'?'…':''}</button>`
+          ).join('');
+          return `<div class="k-card">
+            <div class="k-card-title">${t.title}</div>
+            <div class="k-card-meta">
+              <span class="dot ${prioColor(t.priority)}"></span>
+              ${req?`<span style="color:var(--accent);font-size:10px;font-weight:700">${req.id}</span>`:''}
+              ${t.owner?`<span>${t.owner}</span>`:''}
+              ${t.endDate?`<span style="color:${isOverdue(t.endDate)&&t.status!=='Done'?'var(--red)':'var(--t3)'}">${t.endDate}</span>`:''}
+            </div>
+            <div style="margin:7px 0"><div class="prog-bar"><div class="prog-fill" style="width:${t.progress||0}%;background:${col.color}"></div></div></div>
+            <div class="k-card-actions">
+              ${moveBtns}
+              <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="initTaskModal('${t.id}');openModal('add-task')">✎</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <button class="add-card-btn" onclick="initTaskModal(null,'${col.key}');openModal('add-task')">+ 작업 추가</button>
+    </div>`;
+  }).join('');
+
+  // WBS
+  document.getElementById('wbs-tbody').innerHTML = tasks.length ? tasks.map(t => `<tr>
+    <td class="td-id" onclick="initTaskModal('${t.id}');openModal('add-task')">${t.id}</td>
+    <td style="font-weight:500;max-width:170px">${t.title}</td>
+    <td><span class="badge b-gray">${t.phase||'—'}</span></td>
+    <td class="td-id" style="font-size:10.5px">${t.reqId||'—'}</td>
+    <td style="color:var(--t2);font-size:12px">${t.owner||'—'}</td>
+    <td><span class="dot ${prioColor(t.priority)}" style="margin-right:4px"></span><span style="font-size:11px;color:var(--t2)">${t.priority}</span></td>
+    <td>${statusBadge(t.status)}</td>
+    <td style="font-size:11px;color:${isOverdue(t.endDate)&&t.status!=='Done'?'var(--red)':'var(--t3)'}">${t.endDate||'—'}</td>
+    <td>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px">
+        <div class="prog-bar" style="width:52px"><div class="prog-fill" style="width:${t.progress||0}%;background:var(--accent)"></div></div>
+        <span style="color:var(--t2)">${t.progress||0}%</span>
+      </div>
+    </td>
+    <td><button class="btn btn-ghost btn-sm" onclick="initTaskModal('${t.id}');openModal('add-task')">✎</button></td>
+  </tr>`).join('') : `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--t3)">작업을 추가하세요</td></tr>`;
+}
+function switchTaskTab(t) {
+  document.getElementById('task-tab-kb').classList.toggle('active', t==='kanban');
+  document.getElementById('task-tab-wbs').classList.toggle('active', t==='wbs');
+  document.getElementById('task-kanban-wrap').style.display = t==='kanban' ? '' : 'none';
+  document.getElementById('task-wbs-wrap').style.display = t==='wbs' ? '' : 'none';
+}
+
+// ── TEST CASES ──────────────────────────────────────────────────
+function initTCModal(id) {
+  editIds.tc = id || null;
+  const isEdit = !!id;
+  document.getElementById('tc-modal-t').textContent = isEdit ? '✎ Edit Test Case' : '+ Add Test Case';
+  document.getElementById('tc-del').style.display = isEdit ? '' : 'none';
+  fillSelect('tc-req', S.requirements, r => r.id + ' — ' + r.title, '', true);
+  if (isEdit) {
+    const tc = S.testCases.find(x => x.id === id);
+    sv('tc-id',tc.id); sv('tc-title',tc.title); sv('tc-req',tc.reqId);
+    sv('tc-pre',tc.precondition); sv('tc-input',tc.input);
+    sv('tc-expected',tc.expected); sv('tc-actual',tc.actual);
+    sv('tc-status',tc.status); sv('tc-owner',tc.owner);
+  } else {
+    sv('tc-id', peekId('TC')); sv('tc-title',''); sv('tc-req','');
+    ['tc-pre','tc-input','tc-expected','tc-actual','tc-owner'].forEach(i => sv(i,''));
+    sv('tc-status','Not Run');
+  }
+}
+function saveTC() {
+  const title = v('tc-title').trim();
+  if (!title) { hiErr('tc-title'); toast('테스트명을 입력하세요','err'); return; }
+  if (editIds.tc) {
+    const tc = S.testCases.find(x => x.id === editIds.tc);
+    Object.assign(tc, {title, reqId:v('tc-req'), precondition:v('tc-pre'), input:v('tc-input'), expected:v('tc-expected'), actual:v('tc-actual'), status:v('tc-status'), owner:v('tc-owner')});
+  } else {
+    const id = nextId('TC');
+    S.testCases.push({id, title, reqId:v('tc-req'), precondition:v('tc-pre'), input:v('tc-input'), expected:v('tc-expected'), actual:v('tc-actual'), status:v('tc-status'), owner:v('tc-owner'), createdAt:today()});
+  }
+  save(); closeModal('add-tc'); renderTCs(); updateBadges(); renderDashboard();
+  toast(editIds.tc ? '✓ TC 수정됨' : '✓ TC 추가됨', 'ok');
+}
+function delTC() {
+  if (!confirm('삭제하시겠습니까?')) return;
+  S.testCases = S.testCases.filter(x => x.id !== editIds.tc);
+  save(); closeModal('add-tc'); renderTCs(); updateBadges(); renderDashboard(); toast('삭제됨','info');
+}
+function updateTCStatus(id, status) {
+  const tc = S.testCases.find(x => x.id === id);
+  if (tc) { tc.status = status; save(); renderTCs(); renderDashboard(); }
+}
+function renderTCs() {
+  const rf = v('tcf-req'), sf = v('tcf-status');
+  // update req filter
+  const sel = document.getElementById('tcf-req');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Reqs</option>';
+  S.requirements.forEach(r => { const op=document.createElement('option'); op.value=r.id; op.textContent=r.id; if(r.id===cur)op.selected=true; sel.appendChild(op); });
+
+  const tcs = S.testCases.filter(t => (!rf||t.reqId===rf) && (!sf||t.status===sf));
+  document.getElementById('tc-tbody').innerHTML = tcs.length ? tcs.map(tc => {
+    const sc = tc.status==='Pass'?'b-green':tc.status==='Fail'?'b-red':'b-gray';
+    const bg = tc.status==='Pass'?'var(--green-dim)':tc.status==='Fail'?'var(--red-dim)':'var(--bg3)';
+    const bc = tc.status==='Pass'?'var(--green-bd)':tc.status==='Fail'?'var(--red-bd)':'var(--bd2)';
+    return `<tr>
+      <td class="td-id" onclick="initTCModal('${tc.id}');openModal('add-tc')">${tc.id}</td>
+      <td style="font-weight:500;max-width:150px">${tc.title}</td>
+      <td class="td-id" style="font-size:10.5px">${tc.reqId||'—'}</td>
+      <td style="font-size:11px;color:var(--t2);max-width:110px" title="${tc.precondition||''}">${tc.precondition?tc.precondition.slice(0,45)+(tc.precondition.length>45?'…':''):'—'}</td>
+      <td style="font-size:11px;color:var(--t2);max-width:110px" title="${tc.input||''}">${tc.input?tc.input.slice(0,45)+(tc.input.length>45?'…':''):'—'}</td>
+      <td style="font-size:11px;color:var(--t2);max-width:110px" title="${tc.expected||''}">${tc.expected?tc.expected.slice(0,45)+(tc.expected.length>45?'…':''):'—'}</td>
+      <td style="font-size:11px;color:${tc.status==='Pass'?'var(--green)':tc.status==='Fail'?'var(--red)':'var(--t3)'};max-width:80px" title="${tc.actual||''}">${tc.actual?tc.actual.slice(0,30):'—'}</td>
+      <td>
+        <select style="font-size:11px;padding:3px 6px;width:90px;background:${bg};border:1px solid ${bc};border-radius:5px;color:${tc.status==='Pass'?'var(--green)':tc.status==='Fail'?'var(--red)':'var(--t2)'};font-family:inherit;cursor:pointer" onchange="updateTCStatus('${tc.id}',this.value)">
+          <option ${tc.status==='Not Run'?'selected':''}>Not Run</option>
+          <option ${tc.status==='Pass'?'selected':''}>Pass</option>
+          <option ${tc.status==='Fail'?'selected':''}>Fail</option>
+        </select>
+      </td>
+      <td style="color:var(--t2);font-size:12px">${tc.owner||'—'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="initTCModal('${tc.id}');openModal('add-tc')">✎</button></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--t3)">테스트 케이스를 추가하세요</td></tr>`;
+}
+
+// ── TIMELINE ────────────────────────────────────────────────────
+function renderTimeline() {
+  const pf = v('tl-filter');
+  const tasks = S.tasks.filter(t => t.startDate && t.endDate && (!pf||t.phase===pf));
+
+  if (!tasks.length) {
+    document.getElementById('gantt-container').innerHTML = '<div style="text-align:center;padding:48px;color:var(--t3);font-size:12px">시작일/종료일이 설정된 작업을 추가하세요</div>';
+    return;
+  }
+
+  const dates = tasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate)]);
+  const minD = new Date(Math.min(...dates));
+  const maxD = new Date(Math.max(...dates));
+  // round to month boundaries
+  const startM = new Date(minD.getFullYear(), minD.getMonth(), 1);
+  const endM = new Date(maxD.getFullYear(), maxD.getMonth()+1, 0);
+  const totalDays = (endM - startM) / 86400000;
+
+  // Generate months
+  const months = [];
+  let cur = new Date(startM);
+  while (cur <= endM) {
+    months.push({year:cur.getFullYear(), month:cur.getMonth()});
+    cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
+  }
+
+  const today2 = new Date();
+  const todayPct = Math.max(0, Math.min(100, ((today2-startM)/86400000/totalDays)*100));
+
+  const barColor = t => {
+    if (t.status === 'Done') return 'var(--green)';
+    if (t.status === 'In Progress') return 'var(--amber)';
+    if (isOverdue(t.endDate)) return 'var(--red)';
+    return 'var(--accent)';
+  };
+
+  const header = `<div class="gantt-header">
+    <div class="gantt-label-col">Task</div>
+    <div class="gantt-months">${months.map(m=>`<div class="gantt-month">${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m.month]} ${m.year}</div>`).join('')}</div>
+  </div>`;
+
+  const rows = tasks.map(t => {
+    const s = new Date(t.startDate), e = new Date(t.endDate);
+    const left = ((s-startM)/86400000/totalDays)*100;
+    const width = Math.max(0.5, ((e-s)/86400000/totalDays)*100);
+    const color = barColor(t);
+    const req = S.requirements.find(r => r.id === t.reqId);
+    return `<div class="gantt-row">
+      <div class="gantt-row-label">
+        <span class="dot ${prioColor(t.priority)}"></span>
+        <div style="min-width:0">
+          <div style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+          <div style="font-size:10px;color:var(--t3)">${t.owner||''} ${req?'· '+req.id:''}</div>
+        </div>
+        ${statusBadge(t.status)}
+      </div>
+      <div class="gantt-row-bars">
+        <div class="gantt-today" style="left:${todayPct}%"></div>
+        <div class="gantt-bar" style="left:${left}%;width:${width}%;background:${color};color:${color==='var(--accent)'?'#fff':'var(--bg0)'}" title="${t.title}: ${t.startDate} ~ ${t.endDate} (${t.progress||0}%)">
+          ${width > 8 ? t.title.slice(0,20) : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('gantt-container').innerHTML = header + rows;
+
+  // Legend
+  const phases = [...new Set(tasks.map(t=>t.phase).filter(Boolean))];
+  document.getElementById('tl-legend').innerHTML = phases.length ? `<div class="card" style="padding:10px 14px">
+    <div style="font-size:10.5px;color:var(--t3);margin-bottom:6px;letter-spacing:.08em;text-transform:uppercase;font-weight:700">Phase 요약</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${phases.map(ph => {
+        const pt = tasks.filter(t=>t.phase===ph);
+        const done = pt.filter(t=>t.status==='Done').length;
+        return `<div style="font-size:11px;color:var(--t2)"><span class="badge b-gray" style="margin-right:4px">${ph}</span>${done}/${pt.length} done</div>`;
+      }).join('')}
+    </div>
+  </div>` : '';
+}
+
+// ── API SPEC ────────────────────────────────────────────────────
+function initAPIModal(id) {
+  editIds.api = id || null;
+  const isEdit = !!id;
+  document.getElementById('api-modal-t').textContent = isEdit ? '✎ Edit API' : '+ Add API';
+  document.getElementById('api-del').style.display = isEdit ? '' : 'none';
+  fillSelect('api-req', S.requirements, r => r.id + ' — ' + r.title, '', true);
+  if (isEdit) {
+    const a = S.apis.find(x => x.id === id);
+    sv('api-id',a.id); sv('api-method',a.method); sv('api-endpoint',a.endpoint);
+    sv('api-desc',a.desc); sv('api-req',a.reqId); sv('api-owner',a.owner);
+    sv('api-status',a.status); sv('api-req-body',a.reqBody);
+    sv('api-res-body',a.resBody); sv('api-errors',a.errors);
+  } else {
+    sv('api-id', peekId('API')); sv('api-method','POST'); sv('api-endpoint','');
+    sv('api-desc',''); sv('api-req',''); sv('api-owner','');
+    sv('api-status','Draft'); sv('api-req-body',''); sv('api-res-body',''); sv('api-errors','');
+  }
+}
+function saveAPI() {
+  const endpoint = v('api-endpoint').trim();
+  if (!endpoint) { hiErr('api-endpoint'); toast('Endpoint를 입력하세요','err'); return; }
+  if (editIds.api) {
+    const a = S.apis.find(x => x.id === editIds.api);
+    Object.assign(a, {method:v('api-method'), endpoint, desc:v('api-desc'), reqId:v('api-req'), owner:v('api-owner'), status:v('api-status'), reqBody:v('api-req-body'), resBody:v('api-res-body'), errors:v('api-errors')});
+  } else {
+    const id = nextId('API');
+    S.apis.push({id, method:v('api-method'), endpoint, desc:v('api-desc'), reqId:v('api-req'), owner:v('api-owner'), status:v('api-status'), reqBody:v('api-req-body'), resBody:v('api-res-body'), errors:v('api-errors'), createdAt:today()});
+  }
+  save(); closeModal('add-api'); renderAPIs(); updateBadges(); renderDashboard();
+  toast(editIds.api ? '✓ API 수정됨' : '✓ API 추가됨', 'ok');
+}
+function delAPI() {
+  if (!confirm('삭제하시겠습니까?')) return;
+  S.apis = S.apis.filter(x => x.id !== editIds.api);
+  save(); closeModal('add-api'); renderAPIs(); updateBadges(); toast('삭제됨','info');
+}
+function renderAPIs() {
+  const mf = v('apif-method'), sf = v('apif-status');
+  const apis = S.apis.filter(a => (!mf||a.method===mf) && (!sf||a.status===sf));
+  const el = document.getElementById('api-list');
+
+  if (!apis.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">⊷</div><div class="empty-title">API가 없습니다</div><div class="empty-sub">+ Add API 버튼으로 API를 추가하세요</div></div>';
+    return;
+  }
+
+  el.innerHTML = apis.map(a => {
+    const req = S.requirements.find(r => r.id === a.reqId);
+    const mc = `method-${a.method}`;
+    return `<div class="endpoint-row" onclick="initAPIModal('${a.id}');openModal('add-api')">
+      <span class="method-badge ${mc}">${a.method}</span>
+      <div style="flex:1;min-width:0">
+        <div class="endpoint-path">${a.endpoint}</div>
+        <div class="endpoint-desc">${a.desc||''} ${req?`· <span style="color:var(--accent)">${req.id}</span>`:''}</div>
+      </div>
+      ${statusBadge(a.status)}
+      <span style="font-size:11px;color:var(--t3)">${a.owner||''}</span>
+      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();initAPIModal('${a.id}');openModal('add-api')">✎</button>
+    </div>
+    <div style="display:none" id="api-detail-${a.id}">
+      <div class="g2" style="gap:10px;margin-bottom:12px">
+        <div><div class="form-label">Request Body</div><div class="code-block">${a.reqBody||'(없음)'}</div></div>
+        <div><div class="form-label">Response Body</div><div class="code-block">${a.resBody||'(없음)'}</div></div>
+      </div>
+      ${a.errors?`<div class="form-label">Error Codes</div><div style="font-size:11px;color:var(--red)">${a.errors}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ── RISKS ───────────────────────────────────────────────────────
+function initRiskModal(id) {
+  editIds.risk = id || null;
+  const isEdit = !!id;
+  document.getElementById('risk-modal-t').textContent = isEdit ? '✎ Edit Risk' : '+ Add Risk';
+  document.getElementById('risk-del').style.display = isEdit ? '' : 'none';
+  if (isEdit) {
+    const r = S.risks.find(x => x.id === id);
+    sv('risk-id',r.id); sv('risk-title',r.title); sv('risk-desc',r.desc);
+    sv('risk-impact',r.impact); sv('risk-prob',r.probability);
+    sv('risk-mitigation',r.mitigation); sv('risk-owner',r.owner); sv('risk-status',r.status);
+  } else {
+    sv('risk-id', peekId('RISK')); ['risk-title','risk-desc','risk-mitigation','risk-owner'].forEach(i=>sv(i,''));
+    sv('risk-impact','Medium'); sv('risk-prob','Medium'); sv('risk-status','Open');
+  }
+}
+function saveRisk() {
+  const title = v('risk-title').trim();
+  if (!title) { hiErr('risk-title'); toast('리스크명을 입력하세요','err'); return; }
+  if (editIds.risk) {
+    const r = S.risks.find(x => x.id === editIds.risk);
+    Object.assign(r, {title, desc:v('risk-desc'), impact:v('risk-impact'), probability:v('risk-prob'), mitigation:v('risk-mitigation'), owner:v('risk-owner'), status:v('risk-status')});
+  } else {
+    const id = nextId('RISK');
+    S.risks.push({id, title, desc:v('risk-desc'), impact:v('risk-impact'), probability:v('risk-prob'), mitigation:v('risk-mitigation'), owner:v('risk-owner'), status:v('risk-status'), createdAt:today()});
+  }
+  save(); closeModal('add-risk'); renderRisks(); updateBadges();
+  toast(editIds.risk ? '✓ 리스크 수정됨' : '✓ 리스크 추가됨', 'ok');
+}
+function delRisk() {
+  if (!confirm('삭제?')) return;
+  S.risks = S.risks.filter(x => x.id !== editIds.risk);
+  save(); closeModal('add-risk'); renderRisks(); updateBadges(); toast('삭제됨','info');
+}
+function renderRisks() {
+  const list = document.getElementById('risk-list');
+  const lvl = x => x==='High'?3:x==='Medium'?2:1;
+  const riskColor = r => {
+    const score = lvl(r.impact) * lvl(r.probability);
+    if (score >= 6) return 'b-red';
+    if (score >= 3) return 'b-amber';
+    return 'b-green';
+  };
+
+  list.innerHTML = S.risks.length ? S.risks.map(r => `
+    <div class="card" style="margin-bottom:8px;cursor:pointer" onclick="initRiskModal('${r.id}');openModal('add-risk')">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span class="td-id" style="color:var(--red)">${r.id}</span>
+        <span style="font-weight:600;flex:1">${r.title}</span>
+        <span class="badge ${riskColor(r)}">${r.impact}×${r.probability}</span>
+        ${statusBadge(r.status)}
+      </div>
+      ${r.desc?`<div style="font-size:11px;color:var(--t2);margin-bottom:6px;line-height:1.5">${r.desc}</div>`:''}
+      ${r.mitigation?`<div style="font-size:11px;color:var(--t3)"><span style="color:var(--green)">→</span> ${r.mitigation}</div>`:''}
+      <div style="font-size:11px;color:var(--t3);margin-top:4px">담당: ${r.owner||'—'}</div>
+    </div>
+  `).join('') : '<div style="text-align:center;padding:24px;color:var(--t3);font-size:12px">리스크를 추가하세요</div>';
+
+  // Matrix
+  const matrix = document.getElementById('risk-matrix');
+  const levels = ['High','Medium','Low'];
+  matrix.innerHTML = levels.map(impact =>
+    ['Low','Medium','High'].map(prob => {
+      const rs = S.risks.filter(r => r.impact === impact && r.probability === prob);
+      const cls = `${impact.toLowerCase()}-${prob.toLowerCase()}`;
+      return `<div class="risk-cell ${cls}" style="min-height:54px" title="${impact} impact × ${prob} prob">
+        ${rs.map(r=>`<div class="risk-matrix-dot" onclick="initRiskModal('${r.id}');openModal('add-risk')" title="${r.title}">${r.id.slice(5)}</div>`).join('')}
+        ${!rs.length?`<span style="font-size:9px;opacity:.3">${impact[0]}×${prob[0]}</span>`:''}
+      </div>`;
+    }).join('')
+  ).join('');
+}
+
+// ── MEETINGS ────────────────────────────────────────────────────
+function initMeetingModal(id) {
+  editIds.meeting = id || null;
+  const isEdit = !!id;
+  document.getElementById('mtg-modal-t').textContent = isEdit ? '✎ Edit Meeting' : '+ New Meeting';
+  document.getElementById('mtg-del').style.display = isEdit ? '' : 'none';
+  if (isEdit) {
+    const m = S.meetings.find(x => x.id === id);
+    sv('mtg-title',m.title); sv('mtg-date',m.date); sv('mtg-attendees',m.attendees);
+    sv('mtg-agenda',m.agenda); sv('mtg-discussion',m.discussion);
+    sv('mtg-decision',m.decision); sv('mtg-actions',m.actions); sv('mtg-next',m.nextMeeting);
+  } else {
+    ['mtg-title','mtg-attendees','mtg-agenda','mtg-discussion','mtg-decision','mtg-actions'].forEach(i=>sv(i,''));
+    sv('mtg-date', today()); sv('mtg-next','');
+  }
+}
+function saveMeeting() {
+  const title = v('mtg-title').trim();
+  if (!title) { hiErr('mtg-title'); toast('회의 제목을 입력하세요','err'); return; }
+  if (editIds.meeting) {
+    const m = S.meetings.find(x => x.id === editIds.meeting);
+    Object.assign(m, {title, date:v('mtg-date'), attendees:v('mtg-attendees'), agenda:v('mtg-agenda'), discussion:v('mtg-discussion'), decision:v('mtg-decision'), actions:v('mtg-actions'), nextMeeting:v('mtg-next')});
+  } else {
+    const id = nextId('MTG');
+    S.meetings.push({id, title, date:v('mtg-date'), attendees:v('mtg-attendees'), agenda:v('mtg-agenda'), discussion:v('mtg-discussion'), decision:v('mtg-decision'), actions:v('mtg-actions'), nextMeeting:v('mtg-next'), createdAt:today()});
+  }
+  save(); closeModal('add-meeting'); renderMeetings(); updateBadges();
+  toast(editIds.meeting ? '✓ 회의록 수정됨' : '✓ 회의록 추가됨', 'ok');
+}
+function delMeeting() {
+  if (!confirm('삭제?')) return;
+  S.meetings = S.meetings.filter(x => x.id !== editIds.meeting);
+  save(); closeModal('add-meeting'); renderMeetings(); updateBadges(); toast('삭제됨','info');
+}
+function actionToTask(actionText) {
+  const match = actionText.match(/^\[(.+?)\]\s*(.+)/);
+  const owner = match ? match[1] : '';
+  const title = match ? match[2] : actionText;
+  initTaskModal(null, 'To Do');
+  setTimeout(() => {
+    sv('t-title', title.trim());
+    sv('t-owner', owner.trim());
+    openModal('add-task');
+  }, 50);
+  closeModal('add-meeting');
+}
+function renderMeetings() {
+  const list = document.getElementById('meeting-list');
+  const sorted = [...S.meetings].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  list.innerHTML = sorted.length ? sorted.map(m => `
+    <div class="meeting-card" onclick="showMeetingDetail('${m.id}')">
+      <div class="meeting-date">${m.date||'날짜 없음'}</div>
+      <div class="meeting-title">${m.title}</div>
+      <div class="meeting-meta">
+        <span>${m.attendees||'—'}</span>
+        ${m.actions?`<span>${m.actions.split('\n').filter(Boolean).length} Actions</span>`:''}
+        ${m.nextMeeting?`<span>Next: ${m.nextMeeting}</span>`:''}
+      </div>
+    </div>
+  `).join('') : '<div style="text-align:center;padding:32px;color:var(--t3);font-size:13px">회의록을 추가하세요</div>';
+}
+function showMeetingDetail(id) {
+  const m = S.meetings.find(x => x.id === id);
+  if (!m) return;
+  curMtgId = id;
+  const detail = document.getElementById('meeting-detail');
+  detail.style.display = '';
+  const actions = (m.actions||'').split('\n').filter(Boolean);
+  detail.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px">
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;color:var(--t1)">${m.title}</div>
+        <div style="font-size:12px;color:var(--t3);margin-top:3px">${m.date} · ${m.attendees||''}</div>
+      </div>
+      <button class="btn btn-sm" onclick="initMeetingModal('${m.id}');openModal('add-meeting')">수정</button>
+    </div>
+    ${m.agenda?`<div class="card-title">안건</div><div style="font-size:13px;color:var(--t2);white-space:pre-line;margin-bottom:14px;line-height:1.6">${m.agenda}</div>`:''}
+    ${m.discussion?`<div class="card-title">논의 내용</div><div style="font-size:13px;color:var(--t2);white-space:pre-line;margin-bottom:14px;line-height:1.6">${m.discussion}</div>`:''}
+    ${m.decision?`<div class="card-title">결정사항</div><div style="font-size:13px;color:var(--t1);white-space:pre-line;margin-bottom:14px;padding:12px;background:var(--bg2);border-radius:8px;border:1px solid var(--bd2);line-height:1.6">${m.decision}</div>`:''}
+    ${actions.length?`
+      <div style="display:flex;align-items:center;margin-bottom:8px">
+        <div class="card-title" style="margin-bottom:0">Action Items</div>
+        <button class="btn btn-sm" style="margin-left:auto;font-size:11px" onclick="actions2Tasks()">전체 Task 변환</button>
+      </div>
+      ${actions.map((a,i)=>`
+        <div class="action-item">
+          <input type="checkbox" id="ai-${i}">
+          <div style="flex:1;font-size:13px;line-height:1.5;color:var(--t1)">${a}</div>
+          <button class="btn btn-ghost btn-sm" style="font-size:11px;white-space:nowrap;flex-shrink:0" onclick="actionToTask('${a.replace(/'/g,"\\'")}')">Task로</button>
+        </div>
+      `).join('')}
+    `:''}
+    ${m.nextMeeting?`<div style="margin-top:12px;padding:10px 14px;background:var(--accent-dim);border:1px solid rgba(91,138,245,.2);border-radius:8px;font-size:13px;color:var(--accent)">다음 회의: ${m.nextMeeting}</div>`:''}
+  `;
+}
+function actions2Tasks() {
+  const m = S.meetings.find(x => x.id === curMtgId);
+  if (!m) return;
+  const actions = (m.actions||'').split('\n').filter(Boolean);
+  actions.forEach(a => {
+    const match = a.match(/^\[(.+?)\]\s*(.+)/);
+    const owner = match ? match[1] : '';
+    const title = match ? match[2] : a;
+    const id = nextId('TASK');
+    S.tasks.push({id, title:title.trim(), desc:`회의록 ${m.title}에서 생성`, phase:'기획', reqId:'', owner:owner.trim(), priority:'Medium', status:'To Do', startDate:m.date, endDate:'', progress:0, createdAt:today()});
+  });
+  save(); updateBadges();
+  toast(`✓ ${actions.length}개 Action이 Task로 변환됨`, 'ok');
+}
+
+// ── DASHBOARD ───────────────────────────────────────────────────
+function renderDashboard() {
+  const p = S.project;
+  document.getElementById('dash-pname').textContent = p.name || '프로젝트명 미설정';
+  document.getElementById('dash-psub').textContent = p.tagline || 'Load Demo 버튼으로 시작하거나 Project Brief를 작성하세요';
+
+  const reqs = S.requirements, tasks = S.tasks, tcs = S.testCases;
+  const done = tasks.filter(t=>t.status==='Done').length;
+  const inprog = tasks.filter(t=>t.status==='In Progress').length;
+  const pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
+  const tcPass = tcs.filter(t=>t.status==='Pass').length;
+  const tcFail = tcs.filter(t=>t.status==='Fail').length;
+  const tcRun = tcPass + tcFail;
+  const pr = tcRun ? Math.round(tcPass/tcRun*100) : 0;
+
+  const s = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  s('d-req', reqs.length); s('d-fr', reqs.filter(r=>r.type==='FR').length); s('d-nfr', reqs.filter(r=>r.type==='NFR').length);
+  s('d-task', tasks.length); s('d-tdone', done); s('d-tinprog', inprog);
+  s('d-pct', pct+'%'); document.getElementById('d-pbar').style.width = pct+'%';
+  s('d-tc', tcs.length); s('d-tcpass', tcPass); s('d-tcfail', tcFail);
+  s('d-passrate', tcRun ? pr+'%' : '—'); document.getElementById('d-prbar').style.width = (tcRun?pr:0)+'%';
+
+  // Active tasks
+  const active = tasks.filter(t=>t.status==='In Progress'||t.status==='To Do').slice(0,8);
+  document.getElementById('dash-active').innerHTML = active.length ? active.map(t=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd1)">
+      <span class="dot ${prioColor(t.priority)}"></span>
+      <span style="flex:1;font-size:13px;color:var(--t1);font-weight:500">${t.title}</span>
+      ${statusBadge(t.status)}
+      <span style="font-size:12px;color:var(--t3);flex-shrink:0">${t.owner||''}</span>
+    </div>
+  `).join('') : '<div style="text-align:center;padding:20px;font-size:13px;color:var(--t3)">진행 중인 작업이 없습니다</div>';
+
+  // Req status bars
+  const statuses = [{s:'Draft',c:'var(--t3)'},{s:'Approved',c:'var(--cyan)'},{s:'In Progress',c:'var(--amber)'},{s:'Done',c:'var(--green)'}];
+  document.getElementById('dash-req-bars').innerHTML = statuses.map(({s:st,c}) => {
+    const cnt = reqs.filter(r=>r.status===st).length;
+    const pp = reqs.length ? Math.round(cnt/reqs.length*100) : 0;
+    return `<div>
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px">
+        <span style="color:var(--t2);font-weight:500">${st}</span><span style="color:${c};font-weight:600">${cnt}</span>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pp}%;background:${c}"></div></div>
+    </div>`;
+  }).join('');
+
+  // TC bars
+  const tcStats = [{s:'Not Run',c:'var(--t3)',cnt:tcs.filter(t=>t.status==='Not Run').length},{s:'Pass',c:'var(--green)',cnt:tcPass},{s:'Fail',c:'var(--red)',cnt:tcFail}];
+  document.getElementById('dash-tc-bars').innerHTML = tcStats.map(({s:st,c,cnt}) => {
+    const pp = tcs.length ? Math.round(cnt/tcs.length*100) : 0;
+    return `<div>
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px">
+        <span style="color:var(--t2);font-weight:500">${st}</span><span style="color:${c};font-weight:600">${cnt}</span>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pp}%;background:${c}"></div></div>
+    </div>`;
+  }).join('');
+
+  // Traceability
+  const wTask = reqs.filter(r=>S.tasks.some(t=>t.reqId===r.id)).length;
+  const wTC = reqs.filter(r=>S.testCases.some(t=>t.reqId===r.id)).length;
+  const wAPI = reqs.filter(r=>S.apis.some(a=>a.reqId===r.id)).length;
+  document.getElementById('dash-trace').innerHTML = [
+    {label:'Task 연결', cnt:wTask, color:'var(--accent)'},
+    {label:'TC 연결', cnt:wTC, color:'var(--green)'},
+    {label:'API 연결', cnt:wAPI, color:'var(--cyan)'},
+  ].map(({label,cnt,color})=>`
+    <div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px">
+        <span style="color:var(--t2);font-weight:500">${label}</span>
+        <span style="color:${color};font-weight:600">${cnt} / ${reqs.length}</span>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${reqs.length?Math.round(cnt/reqs.length*100):0}%;background:${color}"></div></div>
+    </div>
+  `).join('');
+
+  updateBadges();
+  updateStatusUI();
+}
+
+// ── EXPORT ──────────────────────────────────────────────────────
+function renderExport() {
+  const rtm = document.getElementById('rtm-wrap');
+  if (!S.requirements.length) {
+    rtm.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t3);font-size:12px">요구사항을 먼저 추가하세요</div>';
+    return;
+  }
+  rtm.innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>Req ID</th><th>Title</th><th>Priority</th><th>Status</th><th>Tasks</th><th>APIs</th><th>Test Cases</th><th>Coverage</th></tr></thead><tbody>` +
+    S.requirements.map(r => {
+      const tasks = S.tasks.filter(t=>t.reqId===r.id);
+      const apis = S.apis.filter(a=>a.reqId===r.id);
+      const tcs = S.testCases.filter(t=>t.reqId===r.id);
+      const full = tasks.length>0 && tcs.length>0;
+      return `<tr>
+        <td class="td-id">${r.id}</td>
+        <td style="font-weight:500">${r.title}</td>
+        <td><span class="dot ${prioColor(r.priority)}" style="margin-right:4px"></span>${r.priority}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td>${tasks.map(t=>`<span class="chip chip-gray">${t.id}</span>`).join('')||'<span style="color:var(--red);font-size:11px">⚠</span>'}</td>
+        <td>${apis.map(a=>`<span class="chip" style="font-size:9px"><span class="method-badge ${`method-${a.method}`}" style="padding:0 4px;font-size:9px">${a.method}</span> ${a.endpoint.slice(0,14)}</span>`).join('')||'<span style="color:var(--t4);font-size:11px">—</span>'}</td>
+        <td>${tcs.map(t=>`<span class="chip ${t.status==='Pass'?'chip-green':t.status==='Fail'?'chip-red':''}">${t.id} ${t.status==='Pass'?'✓':t.status==='Fail'?'✗':'○'}</span>`).join('')||'<span style="color:var(--red);font-size:11px">⚠</span>'}</td>
+        <td><span class="badge ${full?'b-green':'b-amber'}">${full?'✓ Full':'△ Partial'}</span></td>
+      </tr>`;
+    }).join('') + `</tbody></table></div>`;
+}
+
+// ── EXPORT — 라이브러리 로드 ──────────────────────────────────
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+// ── PDF 생성 ─────────────────────────────────────────────────
+async function expPDF(type) {
+  toast('PDF 생성 중...', 'info');
+  try {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+    const { jsPDF } = window.jspdf;
+    const p = S.project;
+    const fname = (p.name||'project').replace(/\s+/g,'-');
+
+    if (type === 'brief') {
+      const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+      pdfBrief(doc, p);
+      doc.save(`${fname}-brief.pdf`);
+
+    } else if (type === 'srs') {
+      const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+      pdfSRS(doc, p);
+      doc.save(`${fname}-SRS.pdf`);
+
+    } else if (type === 'qa') {
+      const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+      pdfQA(doc, p);
+      doc.save(`${fname}-QA-report.pdf`);
+
+    } else if (type === 'rtm') {
+      const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+      pdfRTM(doc, p);
+      doc.save(`${fname}-RTM.pdf`);
+    }
+    toast('✓ PDF 저장 완료', 'ok');
+  } catch(e) { console.error(e); toast('PDF 생성 실패: 인터넷 연결 확인', 'err'); }
+}
+
+function pdfSetFont(doc) {
+  // jsPDF 기본 폰트 사용 (한글은 UTF-8 인코딩)
+  doc.setFont('helvetica');
+}
+
+function pdfHeader(doc, title, sub) {
+  const W = doc.internal.pageSize.getWidth();
+  doc.setFillColor(17, 19, 24);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setFillColor(91, 138, 245);
+  doc.rect(0, 0, 4, 28, 'F');
+  doc.setTextColor(240, 241, 245);
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text(title, 12, 13);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.setTextColor(168, 171, 190);
+  doc.text(sub, 12, 21);
+  doc.setTextColor(168, 171, 190);
+  doc.text(`Generated: ${today()}`, W - 12, 21, {align:'right'});
+  return 36;
+}
+
+function pdfSection(doc, label, y, W) {
+  doc.setFillColor(30, 32, 40);
+  doc.rect(10, y, W - 20, 8, 'F');
+  doc.setTextColor(91, 138, 245);
+  doc.setFontSize(9); doc.setFont('helvetica','bold');
+  doc.text(label.toUpperCase(), 14, y + 5.5);
+  return y + 12;
+}
+
+function pdfField(doc, label, value, y, W) {
+  if (!value) return y;
+  doc.setTextColor(100, 110, 140);
+  doc.setFontSize(8); doc.setFont('helvetica','bold');
+  doc.text(label, 12, y);
+  doc.setTextColor(220, 225, 240);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  const lines = doc.splitTextToSize(String(value), W - 24);
+  doc.text(lines, 12, y + 5);
+  return y + 5 + lines.length * 5 + 4;
+}
+
+function pdfBrief(doc, p) {
+  const W = doc.internal.pageSize.getWidth();
+  let y = pdfHeader(doc, p.name || 'Project Brief', p.tagline || 'Project Overview Document');
+
+  y = pdfSection(doc, 'Project Overview', y, W);
+  y = pdfField(doc, 'Status', `${p.status} | ${p.start||'?'} ~ ${p.end||'?'}`, y, W);
+  y = pdfField(doc, 'Purpose', p.purpose, y, W);
+  y = pdfField(doc, 'Problem Statement', p.problem, y, W);
+  y = pdfField(doc, 'Target Users', p.users, y, W);
+
+  if (y > 200) { doc.addPage(); y = 20; }
+  y = pdfSection(doc, 'Core Value & Features', y, W);
+  y = pdfField(doc, 'Core Value', p.value, y, W);
+  y = pdfField(doc, 'Key Features', p.features, y, W);
+  y = pdfField(doc, 'Success Criteria', p.success, y, W);
+
+  if (y > 200) { doc.addPage(); y = 20; }
+  y = pdfSection(doc, 'Team', y, W);
+  y = pdfField(doc, 'Members', p.members, y, W);
+  y = pdfField(doc, 'Roles', p.roles, y, W);
+}
+
+function pdfSRS(doc, p) {
+  const W = doc.internal.pageSize.getWidth();
+  let y = pdfHeader(doc, `Software Requirements Specification`, `${p.name||'Project'} | v1.0`);
+
+  // Functional Requirements table
+  const frRows = S.requirements.filter(r=>r.type==='FR').map(r=>[
+    r.id, r.title, r.priority, r.status, r.owner||'—', (r.desc||'').slice(0,80)
+  ]);
+  if (frRows.length) {
+    y = pdfSection(doc, 'Functional Requirements', y, W);
+    doc.autoTable({
+      startY: y, margin:{left:10,right:10},
+      head:[['ID','Title','Priority','Status','Owner','Description']],
+      body: frRows,
+      styles:{fontSize:8,cellPadding:3,textColor:[220,225,240],fillColor:[23,25,31]},
+      headStyles:{fillColor:[30,32,40],textColor:[168,171,190],fontStyle:'bold',fontSize:7},
+      alternateRowStyles:{fillColor:[20,22,28]},
+      columnStyles:{0:{cellWidth:18},1:{cellWidth:36},2:{cellWidth:16},3:{cellWidth:18},4:{cellWidth:20},5:{cellWidth:'auto'}},
+      theme:'plain'
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // NFR
+  const nfrRows = S.requirements.filter(r=>r.type==='NFR').map(r=>[r.id,r.title,r.priority,r.status,(r.desc||'').slice(0,100)]);
+  if (nfrRows.length) {
+    if (y > 160) { doc.addPage(); y = 20; }
+    y = pdfSection(doc, 'Non-Functional Requirements', y, W);
+    doc.autoTable({
+      startY: y, margin:{left:10,right:10},
+      head:[['ID','Title','Priority','Status','Description']],
+      body: nfrRows,
+      styles:{fontSize:8,cellPadding:3,textColor:[220,225,240],fillColor:[23,25,31]},
+      headStyles:{fillColor:[30,32,40],textColor:[168,171,190],fontStyle:'bold',fontSize:7},
+      alternateRowStyles:{fillColor:[20,22,28]},
+      theme:'plain'
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // WBS
+  if (S.tasks.length) {
+    doc.addPage(); y = 20;
+    y = pdfSection(doc, 'WBS / Task List', y, W);
+    doc.autoTable({
+      startY: y, margin:{left:10,right:10},
+      head:[['ID','Task','Phase','Owner','Status','Due','%']],
+      body: S.tasks.map(t=>[t.id,t.title,t.phase||'—',t.owner||'—',t.status,t.endDate||'—',(t.progress||0)+'%']),
+      styles:{fontSize:8,cellPadding:3,textColor:[220,225,240],fillColor:[23,25,31]},
+      headStyles:{fillColor:[30,32,40],textColor:[168,171,190],fontStyle:'bold',fontSize:7},
+      alternateRowStyles:{fillColor:[20,22,28]},
+      theme:'plain'
+    });
+  }
+}
+
+function pdfQA(doc, p) {
+  const W = doc.internal.pageSize.getWidth();
+  const tcs = S.testCases;
+  const pass = tcs.filter(t=>t.status==='Pass').length;
+  const fail = tcs.filter(t=>t.status==='Fail').length;
+  const notRun = tcs.filter(t=>t.status==='Not Run').length;
+  const rate = (pass+fail) > 0 ? Math.round(pass/(pass+fail)*100) : 0;
+
+  let y = pdfHeader(doc, 'QA Test Report', `${p.name||'Project'} | Pass Rate: ${rate}%`);
+
+  // Summary stats
+  doc.setFillColor(23,25,31);
+  [[`Total: ${tcs.length}`,10],[`Pass: ${pass}`,70],[`Fail: ${fail}`,130],[`Not Run: ${notRun}`,190],[`Pass Rate: ${rate}%`,250]].forEach(([text,x])=>{
+    doc.rect(x, y, 55, 16, 'F');
+    doc.setTextColor(220,225,240); doc.setFontSize(11); doc.setFont('helvetica','bold');
+    doc.text(text, x+4, y+10);
+  });
+  y += 24;
+
+  if (tcs.length) {
+    doc.autoTable({
+      startY: y, margin:{left:10,right:10},
+      head:[['TC ID','Test Name','Req','Precondition','Expected','Status','Owner']],
+      body: tcs.map(t=>[
+        t.id, t.title, t.reqId||'—',
+        (t.precondition||'').slice(0,40),
+        (t.expected||'').slice(0,40),
+        t.status, t.owner||'—'
+      ]),
+      styles:{fontSize:7.5,cellPadding:2.5,textColor:[220,225,240],fillColor:[23,25,31]},
+      headStyles:{fillColor:[30,32,40],textColor:[168,171,190],fontStyle:'bold',fontSize:7},
+      alternateRowStyles:{fillColor:[20,22,28]},
+      bodyStyles:{minCellHeight:8},
+      didDrawCell(data) {
+        if(data.section==='body' && data.column.index===5) {
+          const status = data.cell.raw;
+          const color = status==='Pass'?[62,207,130]:status==='Fail'?[232,96,90]:[100,110,140];
+          doc.setTextColor(...color);
+          doc.setFont('helvetica','bold');
+          doc.text(status, data.cell.x + data.cell.padding('left'), data.cell.y + data.cell.height/2 + 2.5);
+          doc.setTextColor(220,225,240); doc.setFont('helvetica','normal');
+        }
+      },
+      theme:'plain'
+    });
+  }
+}
+
+function pdfRTM(doc, p) {
+  const W = doc.internal.pageSize.getWidth();
+  let y = pdfHeader(doc, 'Requirements Traceability Matrix', p.name||'Project');
+  doc.autoTable({
+    startY: y, margin:{left:10,right:10},
+    head:[['Req ID','Title','Priority','Status','Tasks','APIs','Test Cases','Coverage']],
+    body: S.requirements.map(r=>{
+      const tasks = S.tasks.filter(t=>t.reqId===r.id).map(t=>t.id).join(', ')||'—';
+      const apis = S.apis.filter(a=>a.reqId===r.id).map(a=>a.id).join(', ')||'—';
+      const tcs = S.testCases.filter(t=>t.reqId===r.id).map(t=>t.id).join(', ')||'—';
+      const full = S.tasks.some(t=>t.reqId===r.id) && S.testCases.some(t=>t.reqId===r.id);
+      return [r.id,r.title,r.priority,r.status,tasks,apis,tcs,full?'Full':'Partial'];
+    }),
+    styles:{fontSize:7.5,cellPadding:3,textColor:[220,225,240],fillColor:[23,25,31]},
+    headStyles:{fillColor:[30,32,40],textColor:[168,171,190],fontStyle:'bold',fontSize:7},
+    alternateRowStyles:{fillColor:[20,22,28]},
+    theme:'plain'
+  });
+}
+
+// ── XLSX 생성 ─────────────────────────────────────────────────
+async function expXLSX(type) {
+  toast('Excel 생성 중...', 'info');
+  try {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+    const XLSX = window.XLSX;
+    const p = S.project;
+    const fname = (p.name||'project').replace(/\s+/g,'-');
+    const wb = XLSX.utils.book_new();
+
+    if (type === 'req' || type === 'all') {
+      const reqData = [
+        ['ID','제목','유형','우선순위','상태','담당자','설명','연결 Task','연결 API','연결 TC','작성일'],
+        ...S.requirements.map(r=>[
+          r.id, r.title, r.type, r.priority, r.status, r.owner||'',
+          r.desc||'',
+          S.tasks.filter(t=>t.reqId===r.id).map(t=>t.id).join(', '),
+          S.apis.filter(a=>a.reqId===r.id).map(a=>a.id).join(', '),
+          S.testCases.filter(t=>t.reqId===r.id).map(t=>t.id).join(', '),
+          r.createdAt||''
+        ])
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(reqData);
+      xlsxStyle(ws, reqData[0].length);
+      XLSX.utils.book_append_sheet(wb, ws, 'Requirements');
+    }
+    if (type === 'wbs' || type === 'all') {
+      const wbsData = [
+        ['ID','작업명','Phase','관련 요구사항','담당자','우선순위','상태','시작일','종료일','완료율(%)'],
+        ...S.tasks.map(t=>[
+          t.id, t.title, t.phase||'', t.reqId||'', t.owner||'',
+          t.priority, t.status, t.startDate||'', t.endDate||'', t.progress||0
+        ])
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wbsData);
+      xlsxStyle(ws, wbsData[0].length);
+      XLSX.utils.book_append_sheet(wb, ws, 'WBS');
+    }
+    if (type === 'tc' || type === 'all') {
+      const tcData = [
+        ['TC ID','테스트명','관련 요구사항','사전조건','입력값','예상 결과','실제 결과','상태','담당자'],
+        ...S.testCases.map(t=>[
+          t.id, t.title, t.reqId||'',
+          t.precondition||'', t.input||'', t.expected||'', t.actual||'',
+          t.status, t.owner||''
+        ])
+      ];
+      // 통계 행 추가
+      const pass = S.testCases.filter(t=>t.status==='Pass').length;
+      const fail = S.testCases.filter(t=>t.status==='Fail').length;
+      const notRun = S.testCases.filter(t=>t.status==='Not Run').length;
+      tcData.push([]);
+      tcData.push(['[ 통계 ]','Total','Pass','Fail','Not Run','Pass Rate','','','']);
+      tcData.push(['',S.testCases.length, pass, fail, notRun,
+        (pass+fail>0?Math.round(pass/(pass+fail)*100):0)+'%','','',''
+      ]);
+      const ws = XLSX.utils.aoa_to_sheet(tcData);
+      xlsxStyle(ws, tcData[0].length);
+      XLSX.utils.book_append_sheet(wb, ws, 'TestCases');
+    }
+    if (type === 'risk' || type === 'all') {
+      const riskData = [
+        ['Risk ID','리스크명','설명','영향도','발생가능성','대응전략','담당자','상태'],
+        ...S.risks.map(r=>[
+          r.id, r.title, r.desc||'', r.impact, r.probability,
+          r.mitigation||'', r.owner||'', r.status
+        ])
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(riskData);
+      xlsxStyle(ws, riskData[0].length);
+      XLSX.utils.book_append_sheet(wb, ws, 'Risk Register');
+    }
+    if (type === 'rtm') {
+      const rtmData = [
+        ['Req ID','제목','유형','우선순위','상태','연결 Task','연결 API','연결 TC','커버리지'],
+        ...S.requirements.map(r=>{
+          const tasks = S.tasks.filter(t=>t.reqId===r.id).map(t=>t.id).join(', ')||'없음';
+          const apis = S.apis.filter(a=>a.reqId===r.id).map(a=>a.id).join(', ')||'없음';
+          const tcs = S.testCases.filter(t=>t.reqId===r.id).map(t=>t.id).join(', ')||'없음';
+          const full = S.tasks.some(t=>t.reqId===r.id) && S.testCases.some(t=>t.reqId===r.id);
+          return [r.id,r.title,r.type,r.priority,r.status,tasks,apis,tcs,full?'Full':'Partial'];
+        })
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(rtmData);
+      xlsxStyle(ws, rtmData[0].length);
+      XLSX.utils.book_append_sheet(wb, ws, 'RTM');
+    }
+
+    // 프로젝트 정보 시트 (항상 추가)
+    if (type === 'all') {
+      const infoData = [
+        ['프로젝트 정보',''],
+        ['프로젝트명', p.name||''],
+        ['한 줄 소개', p.tagline||''],
+        ['상태', p.status||''],
+        ['시작일', p.start||''],
+        ['종료일', p.end||''],
+        ['팀원', p.members||''],
+        ['목적', p.purpose||''],
+        ['생성일', today()]
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(infoData);
+      XLSX.utils.book_append_sheet(wb, ws, 'Project Info');
+    }
+
+    const suffix = type==='all'?'-all':type==='rtm'?'-RTM':type==='req'?'-requirements':type==='wbs'?'-WBS':type==='tc'?'-testcases':'-risk';
+    XLSX.writeFile(wb, `${fname}${suffix}.xlsx`);
+    toast('✓ Excel 파일 저장 완료', 'ok');
+  } catch(e) { console.error(e); toast('Excel 생성 실패: 인터넷 연결 확인', 'err'); }
+}
+
+function xlsxStyle(ws, colCount) {
+  // 컬럼 너비 자동 조정
+  const colWidths = Array(colCount).fill({wch:18});
+  colWidths[0] = {wch:12};
+  colWidths[1] = {wch:30};
+  ws['!cols'] = colWidths;
+}
+
+// ── DOCX 생성 ─────────────────────────────────────────────────
+async function expDOCX(type) {
+  toast('Word 문서 생성 중...', 'info');
+  try {
+    await loadScript('https://unpkg.com/docx@7.8.2/build/index.js');
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+            HeadingLevel, AlignmentType, BorderStyle, ShadingType, WidthType,
+            Header, Footer, PageNumber, TabStopType } = window.docx;
+    const p = S.project;
+    const fname = (p.name||'project').replace(/\s+/g,'-');
+
+    let doc;
+    if (type === 'brief') {
+      doc = buildBriefDocx({Document,Paragraph,TextRun,Table,TableRow,TableCell,HeadingLevel,AlignmentType,WidthType}, p);
+    } else if (type === 'srs') {
+      doc = buildSRSDocx({Document,Paragraph,TextRun,Table,TableRow,TableCell,HeadingLevel,AlignmentType,WidthType}, p);
+    } else if (type === 'meetings') {
+      doc = buildMeetingsDocx({Document,Paragraph,TextRun,HeadingLevel,AlignmentType}, p);
+    }
+
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${fname}-${type}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('✓ Word 파일 저장 완료 (한글에서도 열기 가능)', 'ok');
+  } catch(e) { console.error(e); toast('Word 생성 실패: 인터넷 연결 확인', 'err'); }
+}
+
+function docxH1(Paragraph, TextRun, HeadingLevel, text) {
+  return new Paragraph({
+    heading: HeadingLevel.HEADING_1,
+    children:[new TextRun({text, bold:true, size:32, color:'1a1a2e'})],
+    spacing:{after:200},
+  });
+}
+function docxH2(Paragraph, TextRun, HeadingLevel, text) {
+  return new Paragraph({
+    heading: HeadingLevel.HEADING_2,
+    children:[new TextRun({text, bold:true, size:26, color:'2d3a8c'})],
+    spacing:{before:300, after:100},
+  });
+}
+function docxP(Paragraph, TextRun, text, opts={}) {
+  return new Paragraph({
+    children:[new TextRun({text:text||'—', size:22, ...opts})],
+    spacing:{after:80},
+  });
+}
+function docxLabel(Paragraph, TextRun, label, value) {
+  return new Paragraph({
+    children:[
+      new TextRun({text: label + ': ', bold:true, size:21, color:'555577'}),
+      new TextRun({text: value||'—', size:21, color:'222244'}),
+    ],
+    spacing:{after:60},
+  });
+}
+
+function buildBriefDocx({Document,Paragraph,TextRun,Table,TableRow,TableCell,HeadingLevel,AlignmentType,WidthType}, p) {
+  const children = [
+    new Paragraph({children:[new TextRun({text: p.name||'Project Brief', bold:true, size:48, color:'1a1a2e'})], spacing:{after:100}}),
+    new Paragraph({children:[new TextRun({text: p.tagline||'', size:24, color:'555577', italics:true})], spacing:{after:300}}),
+    docxLabel(Paragraph, TextRun, 'Status', p.status),
+    docxLabel(Paragraph, TextRun, 'Period', `${p.start||'?'} ~ ${p.end||'?'}`),
+    docxLabel(Paragraph, TextRun, 'Members', p.members),
+    new Paragraph({children:[new TextRun({text:''})], spacing:{after:200}}),
+    docxH2(Paragraph, TextRun, HeadingLevel, '1. 목적 (Purpose)'),
+    docxP(Paragraph, TextRun, p.purpose),
+    docxH2(Paragraph, TextRun, HeadingLevel, '2. 해결 문제 (Problem Statement)'),
+    docxP(Paragraph, TextRun, p.problem),
+    docxH2(Paragraph, TextRun, HeadingLevel, '3. 대상 사용자 (Target Users)'),
+    docxP(Paragraph, TextRun, p.users),
+    docxH2(Paragraph, TextRun, HeadingLevel, '4. 핵심 가치 (Core Value)'),
+    docxP(Paragraph, TextRun, p.value),
+    docxH2(Paragraph, TextRun, HeadingLevel, '5. 주요 기능 (Key Features)'),
+    ...((p.features||'').split('\n').filter(Boolean).map(f => new Paragraph({
+      children:[new TextRun({text:`• ${f.replace(/^-\s*/,'')}`, size:22})], spacing:{after:60}, indent:{left:200}
+    }))),
+    docxH2(Paragraph, TextRun, HeadingLevel, '6. 성공 기준 (Success Criteria)'),
+    docxP(Paragraph, TextRun, p.success),
+    docxH2(Paragraph, TextRun, HeadingLevel, '7. 역할 분담'),
+    ...((p.roles||'').split('\n').filter(Boolean).map(r => new Paragraph({
+      children:[new TextRun({text:`• ${r.replace(/^-\s*/,'')}`, size:22})], spacing:{after:60}, indent:{left:200}
+    }))),
+  ];
+  return new Document({ sections:[{ properties:{}, children }] });
+}
+
+function buildSRSDocx({Document,Paragraph,TextRun,Table,TableRow,TableCell,HeadingLevel,AlignmentType,WidthType}, p) {
+  const tcell = (text, opts={}) => new TableCell({
+    children:[new Paragraph({children:[new TextRun({text:String(text||'—'), size:19, ...opts})]})],
+    width:{size:opts.w||20, type:WidthType.PERCENTAGE},
+  });
+
+  const makeTblRow = (cells, isHeader=false) => new TableRow({
+    tableHeader: isHeader,
+    children: cells.map(([text,w]) => tcell(text, isHeader?{bold:true,w}:{w})),
+  });
+
+  const children = [
+    new Paragraph({children:[new TextRun({text:'Software Requirements Specification', bold:true, size:48, color:'1a1a2e'})], spacing:{after:100}}),
+    docxLabel(Paragraph, TextRun, 'Project', p.name),
+    docxLabel(Paragraph, TextRun, 'Version', '1.0'),
+    docxLabel(Paragraph, TextRun, 'Date', today()),
+    new Paragraph({children:[new TextRun({text:''})], spacing:{after:200}}),
+    docxH1(Paragraph, TextRun, HeadingLevel, '1. 프로젝트 개요'),
+    docxP(Paragraph, TextRun, p.purpose),
+    docxH1(Paragraph, TextRun, HeadingLevel, '2. 기능 요구사항 (Functional Requirements)'),
+  ];
+
+  S.requirements.filter(r=>r.type==='FR').forEach(r => {
+    children.push(docxH2(Paragraph, TextRun, HeadingLevel, `${r.id} ${r.title}`));
+    children.push(docxLabel(Paragraph, TextRun, 'Priority', r.priority));
+    children.push(docxLabel(Paragraph, TextRun, 'Status', r.status));
+    children.push(docxLabel(Paragraph, TextRun, 'Owner', r.owner));
+    children.push(docxP(Paragraph, TextRun, r.desc));
+    const taskIds = S.tasks.filter(t=>t.reqId===r.id).map(t=>t.id).join(', ');
+    const tcIds = S.testCases.filter(t=>t.reqId===r.id).map(t=>t.id).join(', ');
+    children.push(docxLabel(Paragraph, TextRun, 'Tasks', taskIds||'—'));
+    children.push(docxLabel(Paragraph, TextRun, 'Test Cases', tcIds||'—'));
+    children.push(new Paragraph({children:[new TextRun({text:''})], spacing:{after:120}}));
+  });
+
+  children.push(docxH1(Paragraph, TextRun, HeadingLevel, '3. 비기능 요구사항 (Non-Functional Requirements)'));
+  S.requirements.filter(r=>r.type==='NFR').forEach(r => {
+    children.push(docxH2(Paragraph, TextRun, HeadingLevel, `${r.id} ${r.title}`));
+    children.push(docxP(Paragraph, TextRun, r.desc));
+  });
+
+  if (S.tasks.length) {
+    children.push(docxH1(Paragraph, TextRun, HeadingLevel, '4. WBS / Task 목록'));
+    children.push(new Table({
+      width:{size:100, type:WidthType.PERCENTAGE},
+      rows:[
+        makeTblRow([['ID',10],['작업명',30],['Phase',12],['담당자',14],['상태',12],['종료일',12],['%',10]], true),
+        ...S.tasks.map(t => makeTblRow([
+          [t.id,10],[t.title,30],[t.phase||'',12],[t.owner||'',14],[t.status,12],[t.endDate||'',12],[(t.progress||0)+'%',10]
+        ]))
+      ]
+    }));
+    children.push(new Paragraph({children:[new TextRun({text:''})], spacing:{after:200}}));
+  }
+
+  return new Document({ sections:[{ properties:{}, children }] });
+}
+
+function buildMeetingsDocx({Document,Paragraph,TextRun,HeadingLevel,AlignmentType}, p) {
+  const children = [
+    new Paragraph({children:[new TextRun({text:'Meeting Notes', bold:true, size:48, color:'1a1a2e'})], spacing:{after:100}}),
+    docxLabel(Paragraph, TextRun, 'Project', p.name),
+    docxLabel(Paragraph, TextRun, 'Generated', today()),
+    new Paragraph({children:[new TextRun({text:''})], spacing:{after:300}}),
+  ];
+
+  const sorted = [...S.meetings].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  sorted.forEach(m => {
+    children.push(docxH1(Paragraph, TextRun, HeadingLevel, m.title));
+    children.push(docxLabel(Paragraph, TextRun, 'Date', m.date));
+    children.push(docxLabel(Paragraph, TextRun, 'Attendees', m.attendees));
+    if (m.agenda) { children.push(docxH2(Paragraph,TextRun,HeadingLevel,'안건')); children.push(docxP(Paragraph,TextRun,m.agenda)); }
+    if (m.discussion) { children.push(docxH2(Paragraph,TextRun,HeadingLevel,'논의 내용')); children.push(docxP(Paragraph,TextRun,m.discussion)); }
+    if (m.decision) { children.push(docxH2(Paragraph,TextRun,HeadingLevel,'결정사항')); children.push(docxP(Paragraph,TextRun,m.decision)); }
+    if (m.actions) {
+      children.push(docxH2(Paragraph,TextRun,HeadingLevel,'Action Items'));
+      m.actions.split('\n').filter(Boolean).forEach(a => {
+        children.push(new Paragraph({children:[new TextRun({text:`□ ${a}`, size:22})], spacing:{after:60}, indent:{left:200}}));
+      });
+    }
+    if (m.nextMeeting) children.push(docxLabel(Paragraph,TextRun,'다음 회의',m.nextMeeting));
+    children.push(new Paragraph({children:[new TextRun({text:'─'.repeat(50), color:'cccccc', size:18})], spacing:{before:200,after:300}}));
+  });
+  return new Document({ sections:[{ properties:{}, children }] });
+}
+
+// ── 기존 함수 유지 (API MD, SRS MD, JSON) ───────────────────
+function expBrief() { expDOCX('brief'); }
+function expReqs()  { expXLSX('req'); }
+function expWbs()   { expXLSX('wbs'); }
+function expTCs()   { expXLSX('tc'); }
+function expAPIs() {
+  const p = S.project;
+  let md = `# API Specification\n## ${p.name||'Project'}\n**Date:** ${today()}\n\n---\n\n`;
+  S.apis.forEach(a => {
+    const req = S.requirements.find(r=>r.id===a.reqId);
+    md += `## ${a.id} — \`${a.method} ${a.endpoint}\`\n\n**설명:** ${a.desc||''}\n**상태:** ${a.status}\n**담당:** ${a.owner||'—'}\n${req?`**관련 요구사항:** ${req.id} ${req.title}\n`:''}\n`;
+    if (a.reqBody) md += `### Request Body\n\`\`\`json\n${a.reqBody}\n\`\`\`\n\n`;
+    if (a.resBody) md += `### Response Body\n\`\`\`json\n${a.resBody}\n\`\`\`\n\n`;
+    if (a.errors) md += `### Error Codes\n${a.errors}\n\n`;
+    md += '---\n\n';
+  });
+  navigator.clipboard.writeText(md).then(()=>toast('✓ API Spec MD 복사됨','ok'));
+}
+function expSRS() {
+  const p = S.project;
+  let md = `# Software Requirements Specification\n## ${p.name||'Project'}\n**버전:** 1.0 | **날짜:** ${today()}\n\n---\n\n## 1. 프로젝트 개요\n${p.purpose||''}\n\n## 2. 기능 요구사항\n\n`;
+  S.requirements.filter(r=>r.type==='FR').forEach(r=>{
+    md += `### ${r.id} ${r.title}\n- **우선순위:** ${r.priority} | **상태:** ${r.status} | **담당:** ${r.owner||'—'}\n\n${r.desc||''}\n\n**연결:** Task: ${S.tasks.filter(t=>t.reqId===r.id).map(t=>t.id).join(', ')||'없음'} | TC: ${S.testCases.filter(t=>t.reqId===r.id).map(t=>t.id).join(', ')||'없음'} | API: ${S.apis.filter(a=>a.reqId===r.id).map(a=>a.id).join(', ')||'없음'}\n\n`;
+  });
+  md += `## 3. 비기능 요구사항\n\n`;
+  S.requirements.filter(r=>r.type==='NFR').forEach(r=>{md += `### ${r.id} ${r.title}\n${r.desc||''}\n\n`;});
+  md += `## 4. WBS\n\n| ID | Task | Phase | Owner | Status | Progress |\n|---|---|---|---|---|---|\n`;
+  S.tasks.forEach(t=>{md+=`| ${t.id} | ${t.title} | ${t.phase||''} | ${t.owner||''} | ${t.status} | ${t.progress||0}% |\n`;});
+  md += `\n## 5. API\n\n| ID | Method | Endpoint | Status |\n|---|---|---|---|\n`;
+  S.apis.forEach(a=>{md+=`| ${a.id} | ${a.method} | ${a.endpoint} | ${a.status} |\n`;});
+  md += `\n## 6. Test Cases\n\n| ID | Test | Req | Status |\n|---|---|---|---|\n`;
+  S.testCases.forEach(t=>{md+=`| ${t.id} | ${t.title} | ${t.reqId||''} | ${t.status} |\n`;});
+  navigator.clipboard.writeText(md).then(()=>toast('✓ SRS Markdown 복사됨','ok'));
+}
+function expJSON() {
+  dl(JSON.stringify(S, null, 2), `devgym-${(S.project.name||'project').replace(/\s+/g,'-')}-backup.json`);
+  toast('✓ JSON 백업 다운로드', 'ok');
+}
+function importJSON(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      S = Object.assign(defaultState(), data);
+      save(); renderAll(); updateBadges(); updateStatusUI();
+      toast('✓ 데이터 복원 완료', 'ok');
+    } catch(err) { toast('JSON 파일 형식 오류','err'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── MISC ────────────────────────────────────────────────────────
+function hiErr(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('error');
+  el.focus();
+  setTimeout(() => el.classList.remove('error'), 2000);
+}
+
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast t-' + type;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// ── INIT ────────────────────────────────────────────────────────
+renderDashboard();
+updateBadges();
+updateStatusUI();
+</script>
+</body>
+</html>
