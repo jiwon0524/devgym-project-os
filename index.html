@@ -791,6 +791,17 @@ html,body{height:100%;overflow:hidden}
 .template-card-desc{font-size:12px;color:var(--t3);line-height:1.5}
 .template-card-tags{display:flex;gap:4px;flex-wrap:wrap}
 .template-tag{font-size:10.5px;padding:2px 7px;border-radius:4px;background:var(--bg2);color:var(--t3);border:1px solid var(--bd2)}
+
+/* ---- DIAGRAMS ---- */
+.dg-tab{padding:10px 16px;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--t3);border:none;border-bottom:2px solid transparent;background:none;font-family:inherit;transition:all .13s;white-space:nowrap;margin-bottom:-1px}
+.dg-tab:hover{color:var(--t2)}
+.dg-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.solid-card{background:var(--bg2);border:1px solid var(--bd1);border-radius:9px;padding:12px;cursor:pointer;transition:all .14s}
+.solid-card:hover,.solid-card.active{border-color:var(--accent);background:#eff6ff}
+.solid-card-letter{font-size:24px;font-weight:800;color:var(--accent);line-height:1;margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+.solid-card-name{font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px}
+.solid-card-full{font-size:10px;color:var(--t3);margin-bottom:5px}
+.solid-card-desc{font-size:11px;color:var(--t2);line-height:1.5}
 </style>
 </head>
 <body>
@@ -895,6 +906,11 @@ html,body{height:100%;overflow:hidden}
   <div class="nav-item" data-p="export" onclick="nav('export')">
     <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
     <span class="nav-label">Export Center</span>
+  </div>
+  <div class="nav-item" data-p="diagrams" onclick="nav('diagrams')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="8" y="14" width="8" height="8" rx="1"/><line x1="6" y1="10" x2="6" y2="14" stroke-dasharray="2"/><line x1="18" y1="10" x2="12" y2="14" stroke-dasharray="2"/></svg></span>
+    <span class="nav-label">Diagrams</span>
+    <span style="font-size:9px;background:#fef3c7;color:#d97706;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:2px">NEW</span>
   </div>
 
   <div class="sidebar-footer">
@@ -1469,6 +1485,82 @@ html,body{height:100%;overflow:hidden}
         <button class="btn btn-sm" style="border-color:var(--red-bd);color:var(--red);background:var(--red-dim)" onclick="expPDF('rtm')">RTM PDF</button>
       </div>
       <div id="rtm-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     DIAGRAMS — SW Engineering
+     ========================================================= -->
+<div class="page" id="page-diagrams">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">Diagrams</div>
+      <div class="page-hdr-sub">UML · ERD · 클래스 다이어그램 · 시퀀스 · SOLID 원칙 시각화 — 브라우저에서 직접 작성</div>
+    </div>
+    <div class="page-hdr-actions">
+      <button class="help-btn" onclick="openHelp('diagrams')" title="다이어그램 사용법">?</button>
+      <button class="btn" onclick="dgCopyCode()" id="dg-copy-btn">코드 복사</button>
+      <button class="btn" onclick="dgDownloadSVG()" id="dg-svg-btn">SVG 저장</button>
+      <button class="btn btn-primary" onclick="dgRender()">렌더링</button>
+    </div>
+  </div>
+  <div class="content" style="display:flex;flex-direction:column;overflow:hidden;padding:0">
+    <!-- 다이어그램 탭 -->
+    <div style="display:flex;border-bottom:1px solid var(--bd1);background:#fff;flex-shrink:0;overflow-x:auto">
+      <button class="dg-tab active" data-dg="usecase" onclick="switchDiagram('usecase',this)">Use Case</button>
+      <button class="dg-tab" data-dg="class" onclick="switchDiagram('class',this)">Class / SOLID</button>
+      <button class="dg-tab" data-dg="sequence" onclick="switchDiagram('sequence',this)">Sequence</button>
+      <button class="dg-tab" data-dg="erd" onclick="switchDiagram('erd',this)">ERD</button>
+      <button class="dg-tab" data-dg="activity" onclick="switchDiagram('activity',this)">Activity</button>
+      <button class="dg-tab" data-dg="component" onclick="switchDiagram('component',this)">Component</button>
+      <button class="dg-tab" data-dg="solid" onclick="switchDiagram('solid',this)">SOLID 원칙</button>
+    </div>
+
+    <!-- 본문: 편집기 + 미리보기 -->
+    <div style="display:flex;flex:1;overflow:hidden;min-height:0">
+      <!-- 좌측: 코드 편집기 -->
+      <div style="width:42%;min-width:280px;display:flex;flex-direction:column;border-right:1px solid var(--bd1)">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--bd1);background:var(--bg2);display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.05em;text-transform:uppercase">PlantUML 코드</span>
+          <div style="margin-left:auto;display:flex;gap:6px" id="dg-template-btns"></div>
+        </div>
+        <textarea id="dg-code-editor" style="flex:1;resize:none;border:none;outline:none;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:var(--t1);background:#fff;overflow-y:auto"></textarea>
+        <div style="padding:8px 14px;border-top:1px solid var(--bd1);background:var(--bg2);display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-size:11px;color:var(--t3)">PlantUML 문법 사용</span>
+          <a href="https://plantuml.com/ko/" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none">공식 문서 →</a>
+          <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="dgRender()">▶ 렌더링</button>
+        </div>
+      </div>
+
+      <!-- 우측: 미리보기 -->
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--bd1);background:var(--bg2);display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.05em;text-transform:uppercase">미리보기</span>
+          <div id="dg-render-status" style="font-size:11px;color:var(--t3);margin-left:8px"></div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+            <button class="btn btn-sm btn-ghost" onclick="dgZoom(-0.1)">−</button>
+            <span id="dg-zoom-label" style="font-size:11px;color:var(--t3);min-width:36px;text-align:center">100%</span>
+            <button class="btn btn-sm btn-ghost" onclick="dgZoom(0.1)">+</button>
+            <button class="btn btn-sm btn-ghost" onclick="dgZoomReset()">⊡</button>
+          </div>
+        </div>
+        <div id="dg-preview" style="flex:1;overflow:auto;padding:20px;background:#fafafa;display:flex;align-items:flex-start;justify-content:center">
+          <div id="dg-preview-inner" style="transform-origin:top center;transition:transform .2s">
+            <div style="text-align:center;color:var(--t3);padding:60px 20px;font-size:13px">
+              코드를 작성하고 <strong>렌더링</strong> 버튼을 누르세요
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOLID 패널 (solid 탭에서만) -->
+    <div id="solid-panel" style="display:none;flex-shrink:0;border-top:1px solid var(--bd1);background:#fff;max-height:240px;overflow-y:auto">
+      <div style="padding:14px 18px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:12px">SOLID 원칙 — 위반 예시 vs 올바른 설계</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px" id="solid-cards"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -3454,6 +3546,39 @@ RISK-002: 서드파티 API 서비스 중단
 [박BE] PG사 연동 가이드 문서화 (~3/12)` },
       { title: '💡 팁', tip: '액션 아이템의 "Task로" 버튼을 누르면 WBS에 자동으로 추가됩니다. 담당자를 [이름] 형식으로 쓰면 자동으로 Owner가 설정됩니다.' }
     ]
+  },
+  diagrams: {
+    icon: '◈',
+    title: 'Diagrams 사용법',
+    sections: [
+      { title: '지원 다이어그램 7종', items: [
+        'Use Case — 시스템 기능과 사용자 관계. 요구사항 도출 단계 필수.',
+        'Class — 객체지향 설계. 클래스·인터페이스·상속 구조.',
+        'Sequence — API 호출 흐름, 서비스 간 통신 순서. 백엔드 설계.',
+        'ERD — DB 테이블 구조와 관계. DB 설계 단계.',
+        'Activity — 비즈니스 프로세스, 분기·병렬 흐름.',
+        'Component — 마이크로서비스·레이어드 아키텍처.',
+        'SOLID — 객체지향 5대 원칙 위반/준수 코드 시각화.'
+      ]},
+      { title: 'PlantUML 기본 문법', code: `@startuml
+actor User
+participant "API Server" as API
+database MySQL
+
+User -> API: POST /login
+API -> MySQL: SELECT user
+MySQL --> API: user data
+API --> User: 200 OK + JWT
+@enduml` },
+      { title: 'SOLID 원칙 요약', items: [
+        'S — SRP: 클래스는 변경 이유가 하나여야 한다',
+        'O — OCP: 확장엔 열려있고, 수정엔 닫혀있어야 한다',
+        'L — LSP: 자식 클래스는 부모를 완전히 대체해야 한다',
+        'I — ISP: 사용하지 않는 인터페이스에 의존하지 않는다',
+        'D — DIP: 구체 클래스가 아닌 추상화에 의존한다'
+      ]},
+      { title: '💡 팁', tip: 'PlantUML 렌더링은 공식 서버를 사용합니다. 인터넷 연결이 필요합니다. SVG 저장 버튼으로 다이어그램을 파일로 받을 수 있습니다.' }
+    ]
   }
 };
 
@@ -3752,8 +3877,982 @@ window.renderDashboard = function() {
 // 모달이 열릴 때 placeholder 정리 (이미 HTML에 짧은 텍스트 있음)
 
 // ============================================================
-// FIRST VISIT 온보딩
+// DIAGRAMS ENGINE
 // ============================================================
+
+const DG_TEMPLATES = {
+  usecase: {
+    label: 'Use Case',
+    templates: [
+      { name: '기본', code: `@startuml
+left to right direction
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+
+actor "사용자" as User
+actor "관리자" as Admin
+
+rectangle "쇼핑몰 시스템" {
+  usecase "회원가입" as UC1
+  usecase "로그인" as UC2
+  usecase "상품 검색" as UC3
+  usecase "장바구니 담기" as UC4
+  usecase "주문하기" as UC5
+  usecase "주문 관리" as UC6
+  usecase "상품 등록" as UC7
+}
+
+User --> UC1
+User --> UC2
+User --> UC3
+User --> UC4
+User --> UC5
+
+Admin --> UC2
+Admin --> UC6
+Admin --> UC7
+
+UC5 ..> UC2 : <<include>>
+UC4 ..> UC3 : <<extend>>
+@enduml` },
+      { name: '상속 포함', code: `@startuml
+left to right direction
+skinparam actorStyle awesome
+
+actor "비회원" as Guest
+actor "회원" as Member
+actor "VIP회원" as VIP
+
+Member -|> Guest
+VIP -|> Member
+
+rectangle "서비스" {
+  usecase "상품 조회" as UC1
+  usecase "회원가입" as UC2
+  usecase "구매하기" as UC3
+  usecase "리뷰 작성" as UC4
+  usecase "쿠폰 사용" as UC5
+}
+
+Guest --> UC1
+Guest --> UC2
+Member --> UC3
+Member --> UC4
+VIP --> UC5
+@enduml` }
+    ]
+  },
+  class: {
+    label: '클래스',
+    templates: [
+      { name: '기본 클래스', code: `@startuml
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor White
+  BorderColor #2563eb
+  ArrowColor #374151
+}
+
+class User {
+  - id: Long
+  - email: String
+  - password: String
+  - createdAt: LocalDateTime
+  + login(email, pw): Token
+  + logout(): void
+  + updateProfile(dto): User
+}
+
+class Order {
+  - id: Long
+  - userId: Long
+  - status: OrderStatus
+  - totalAmount: BigDecimal
+  + place(): void
+  + cancel(): void
+  + getItems(): List<OrderItem>
+}
+
+class OrderItem {
+  - id: Long
+  - productId: Long
+  - quantity: int
+  - price: BigDecimal
+}
+
+class Product {
+  - id: Long
+  - name: String
+  - price: BigDecimal
+  - stock: int
+  + decreaseStock(qty): void
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+User "1" --> "0..*" Order : places
+Order "1" *-- "1..*" OrderItem : contains
+OrderItem "0..*" --> "1" Product : references
+Order --> OrderStatus
+@enduml` },
+      { name: '인터페이스/추상', code: `@startuml
+skinparam classAttributeIconSize 0
+
+interface PaymentGateway {
+  + pay(amount): PayResult
+  + refund(txId): RefundResult
+  + getStatus(txId): String
+}
+
+interface NotificationService {
+  + send(userId, message): void
+  + sendBulk(userIds, message): void
+}
+
+abstract class BaseEntity {
+  # id: Long
+  # createdAt: LocalDateTime
+  # updatedAt: LocalDateTime
+  + equals(o): boolean
+}
+
+class KakaoPay implements PaymentGateway {
+  - apiKey: String
+  + pay(amount): PayResult
+  + refund(txId): RefundResult
+  + getStatus(txId): String
+}
+
+class TossPayments implements PaymentGateway {
+  - secretKey: String
+  + pay(amount): PayResult
+  + refund(txId): RefundResult
+  + getStatus(txId): String
+}
+
+class EmailService implements NotificationService {
+  - smtpConfig: SmtpConfig
+  + send(userId, message): void
+  + sendBulk(userIds, message): void
+}
+
+class OrderService extends BaseEntity {
+  - paymentGateway: PaymentGateway
+  - notificationService: NotificationService
+  + processPayment(orderId): void
+}
+
+OrderService --> PaymentGateway
+OrderService --> NotificationService
+@enduml` }
+    ]
+  },
+  sequence: {
+    label: '시퀀스',
+    templates: [
+      { name: '로그인 흐름', code: `@startuml
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor User as "사용자"
+participant Frontend as "Frontend\n(React)"
+participant Gateway as "API Gateway"
+participant AuthService as "Auth Service"
+participant DB as "Database\n(MySQL)"
+participant Cache as "Redis Cache"
+
+User -> Frontend: 로그인 버튼 클릭
+Frontend -> Gateway: POST /api/v1/auth/login\n{email, password}
+Gateway -> AuthService: 인증 요청 전달
+
+AuthService -> Cache: 캐시 조회 (이메일 기반)
+alt 캐시 히트
+  Cache --> AuthService: 사용자 정보 반환
+else 캐시 미스
+  AuthService -> DB: SELECT user WHERE email=?
+  DB --> AuthService: 사용자 데이터
+  AuthService -> Cache: 캐시 저장 (TTL 30분)
+end
+
+AuthService -> AuthService: 비밀번호 검증 (BCrypt)
+
+alt 인증 성공
+  AuthService -> AuthService: JWT 토큰 생성
+  AuthService --> Gateway: 200 OK + JWT
+  Gateway --> Frontend: 토큰 전달
+  Frontend -> Frontend: 토큰 localStorage 저장
+  Frontend --> User: 메인화면 이동
+else 인증 실패
+  AuthService --> Gateway: 401 Unauthorized
+  Gateway --> Frontend: 에러 응답
+  Frontend --> User: "이메일 또는 비밀번호를 확인하세요"
+end
+@enduml` },
+      { name: '주문 처리', code: `@startuml
+skinparam sequenceMessageAlign center
+
+actor User
+participant "Frontend" as FE
+participant "Order API" as API
+participant "Payment" as PAY
+participant "Inventory" as INV
+participant "Notification" as NOTI
+database "DB" as DB
+
+User -> FE: 주문하기 클릭
+FE -> API: POST /orders\n{items, paymentMethod}
+
+API -> INV: 재고 확인 요청
+INV -> DB: SELECT stock WHERE product_id IN (...)
+DB --> INV: 재고 데이터
+INV --> API: 재고 확인 완료
+
+API -> DB: BEGIN TRANSACTION
+API -> DB: INSERT INTO orders (...)
+API -> PAY: 결제 승인 요청\n{amount, method}
+
+alt 결제 성공
+  PAY --> API: 결제 승인 완료
+  API -> INV: 재고 차감
+  API -> DB: UPDATE order SET status='CONFIRMED'
+  API -> DB: COMMIT
+  API -> NOTI: 주문 확인 이메일 발송
+  API --> FE: 201 Created
+  FE --> User: 주문 완료 화면
+else 결제 실패
+  PAY --> API: 결제 실패
+  API -> DB: ROLLBACK
+  API --> FE: 400 결제 실패
+  FE --> User: "결제에 실패했습니다"
+end
+@enduml` }
+    ]
+  },
+  erd: {
+    label: 'ERD',
+    templates: [
+      { name: '이커머스 ERD', code: `@startuml
+!define TABLE(name,desc) class name as "desc" << (T,#FFAAAA) >>
+!define PK(x) <b><color:#b8860b>PK</color> x</b>
+!define FK(x) <color:#aaaaaa>FK</color> x
+!define NOT_NULL(x) <u>x</u>
+
+skinparam class {
+  BackgroundColor White
+  BorderColor #666
+}
+
+TABLE(users, "users\n(사용자)") {
+  PK(id): BIGINT AI
+  NOT_NULL(email): VARCHAR(255)
+  NOT_NULL(password): VARCHAR(255)
+  NOT_NULL(name): VARCHAR(100)
+  role: ENUM('USER','ADMIN')
+  created_at: DATETIME
+  updated_at: DATETIME
+}
+
+TABLE(products, "products\n(상품)") {
+  PK(id): BIGINT AI
+  NOT_NULL(name): VARCHAR(255)
+  description: TEXT
+  NOT_NULL(price): DECIMAL(12,2)
+  NOT_NULL(stock): INT
+  FK(category_id): BIGINT
+  is_active: BOOLEAN
+  created_at: DATETIME
+}
+
+TABLE(orders, "orders\n(주문)") {
+  PK(id): BIGINT AI
+  FK(user_id): BIGINT
+  NOT_NULL(status): ENUM
+  NOT_NULL(total): DECIMAL(12,2)
+  payment_method: VARCHAR(50)
+  paid_at: DATETIME
+  created_at: DATETIME
+}
+
+TABLE(order_items, "order_items\n(주문 상품)") {
+  PK(id): BIGINT AI
+  FK(order_id): BIGINT
+  FK(product_id): BIGINT
+  NOT_NULL(quantity): INT
+  NOT_NULL(price): DECIMAL(12,2)
+}
+
+TABLE(categories, "categories\n(카테고리)") {
+  PK(id): BIGINT AI
+  NOT_NULL(name): VARCHAR(100)
+  FK(parent_id): BIGINT
+}
+
+users "1" --o{ orders : "places"
+orders "1" --o{ order_items : "contains"
+products "1" --o{ order_items : "included in"
+categories "1" --o{ products : "has"
+categories ||--o{ categories : "parent-child"
+@enduml` },
+      { name: '인증 시스템', code: `@startuml
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+}
+
+entity users {
+  * id : BIGINT <<PK>>
+  --
+  * email : VARCHAR(255) <<UQ>>
+  * password_hash : VARCHAR(255)
+  * name : VARCHAR(100)
+  role : ENUM
+  * created_at : TIMESTAMP
+}
+
+entity refresh_tokens {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  * token : VARCHAR(512) <<UQ>>
+  * expires_at : TIMESTAMP
+  * created_at : TIMESTAMP
+}
+
+entity login_histories {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  ip_address : VARCHAR(45)
+  user_agent : TEXT
+  success : BOOLEAN
+  * created_at : TIMESTAMP
+}
+
+entity password_resets {
+  * token : VARCHAR(255) <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  * expires_at : TIMESTAMP
+  * created_at : TIMESTAMP
+}
+
+users ||--o{ refresh_tokens : "has"
+users ||--o{ login_histories : "records"
+users ||--o{ password_resets : "requests"
+@enduml` }
+    ]
+  },
+  activity: {
+    label: '액티비티',
+    templates: [
+      { name: '주문 프로세스', code: `@startuml
+skinparam activityBackgroundColor White
+skinparam activityBorderColor #2563eb
+skinparam arrowColor #374151
+
+start
+
+:장바구니 확인;
+
+if (로그인 여부?) then (비로그인)
+  :로그인/회원가입;
+  if (로그인 성공?) then (실패)
+    :에러 메시지 표시;
+    stop
+  else (성공)
+  endif
+else (로그인)
+endif
+
+:배송지 입력;
+:결제 수단 선택;
+
+fork
+  :재고 확인;
+fork again
+  :쿠폰/포인트 적용;
+end fork
+
+if (재고 있음?) then (없음)
+  :품절 안내 및 장바구니 수정;
+  stop
+else (있음)
+endif
+
+:최종 금액 확인;
+:결제 진행;
+
+if (결제 성공?) then (실패)
+  :결제 실패 안내;
+  :재시도 또는 다른 수단 선택;
+  stop
+else (성공)
+endif
+
+:주문 번호 생성;
+:재고 차감;
+:주문 확인 이메일 발송;
+:주문 완료 화면 표시;
+
+stop
+@enduml` },
+      { name: 'CI/CD 파이프라인', code: `@startuml
+skinparam activityBackgroundColor White
+
+|개발자|
+start
+:코드 작성 및 테스트;
+:Git Push (feature branch);
+
+|GitHub Actions|
+:PR 생성 감지;
+:린트 검사;
+:단위 테스트 실행;
+:코드 커버리지 측정;
+
+if (커버리지 80% 이상?) then (미달)
+  :PR 차단 & 알림;
+  |개발자|
+  :테스트 보완;
+  stop
+else (통과)
+endif
+
+|팀 리더|
+:코드 리뷰;
+if (승인?) then (요청변경)
+  |개발자|
+  :수정 후 재요청;
+  stop
+else (승인)
+endif
+
+|GitHub Actions|
+:main branch 머지;
+:Docker 이미지 빌드;
+:스테이징 배포;
+:통합 테스트;
+
+if (테스트 통과?) then (실패)
+  :롤백 & 슬랙 알림;
+  stop
+else (성공)
+endif
+
+:프로덕션 배포 (Blue-Green);
+:헬스 체크;
+:슬랙 배포 완료 알림;
+
+stop
+@enduml` }
+    ]
+  },
+  component: {
+    label: '컴포넌트',
+    templates: [
+      { name: '마이크로서비스', code: `@startuml
+skinparam componentStyle rectangle
+
+package "Client Layer" {
+  [Web App\n(React)] as WEB
+  [Mobile App\n(React Native)] as MOB
+}
+
+package "API Gateway" {
+  [Kong API Gateway] as GW
+  [Rate Limiter] as RL
+  [Auth Filter] as AF
+}
+
+package "Microservices" {
+  [User Service\n:8001] as US
+  [Product Service\n:8002] as PS
+  [Order Service\n:8003] as OS
+  [Payment Service\n:8004] as PAY
+  [Notification Service\n:8005] as NS
+}
+
+package "Message Queue" {
+  [Apache Kafka] as KAFKA
+}
+
+package "Storage" {
+  database "User DB\n(MySQL)" as UDB
+  database "Product DB\n(PostgreSQL)" as PDB
+  database "Order DB\n(MySQL)" as ODB
+  database "Redis Cache" as REDIS
+}
+
+package "Monitoring" {
+  [Prometheus] as PROM
+  [Grafana] as GRAF
+  [ELK Stack] as ELK
+}
+
+WEB --> GW
+MOB --> GW
+GW --> RL
+RL --> AF
+AF --> US
+AF --> PS
+AF --> OS
+
+OS --> KAFKA : 주문 이벤트
+KAFKA --> PAY : 결제 요청
+KAFKA --> NS : 알림 발송
+
+US --> UDB
+US --> REDIS
+PS --> PDB
+PS --> REDIS
+OS --> ODB
+PAY --> ODB
+
+US ..> PROM
+PS ..> PROM
+OS ..> PROM
+PROM --> GRAF
+@enduml` },
+      { name: 'Clean Architecture', code: `@startuml
+skinparam componentStyle rectangle
+skinparam packageBackgroundColor transparent
+
+package "Presentation Layer" #ffe4e1 {
+  [REST Controller] as CTRL
+  [DTO / Request-Response] as DTO
+  [Exception Handler] as EXH
+}
+
+package "Application Layer" #fff3cd {
+  [Use Case / Service] as UC
+  [Application Port (interface)] as PORT
+  [Command / Query] as CQ
+}
+
+package "Domain Layer" #d4edda {
+  [Domain Entity] as ENT
+  [Domain Service] as DS
+  [Value Object] as VO
+  [Domain Event] as EVT
+  [Repository Interface] as REPO
+}
+
+package "Infrastructure Layer" #d1ecf1 {
+  [Repository Impl\n(JPA/MyBatis)] as REPOIMPL
+  [External API Adapter] as EXT
+  [Message Publisher] as MSG
+  [Persistence Model] as PM
+}
+
+CTRL --> DTO
+CTRL --> UC
+UC --> PORT
+UC --> ENT
+UC --> DS
+ENT --> VO
+ENT --> EVT
+DS --> REPO
+UC --> REPO
+
+REPOIMPL ..|> REPO : implements
+REPOIMPL --> PM
+EXT ..|> PORT : implements
+
+note bottom of ENT
+  Domain 계층은 외부 의존성 없음
+  순수한 비즈니스 로직만 포함
+end note
+@enduml` }
+    ]
+  },
+  solid: {
+    label: 'SOLID',
+    templates: [
+      { name: 'S — SRP', code: `@startuml
+skinparam classAttributeIconSize 0
+title Single Responsibility Principle (단일 책임 원칙)
+
+package "❌ 위반 — 하나의 클래스에 여러 책임" #fef2f2 {
+  class UserServiceBAD {
+    + registerUser(dto): User
+    + loginUser(email, pw): Token
+    + sendWelcomeEmail(user): void
+    + saveUserLog(user): void
+    + generateReport(): Report
+  }
+  note right: 등록/인증/이메일/로깅/리포트\n5가지 책임 → 변경 이유 5개
+}
+
+package "✅ 준수 — 책임 분리" #f0fdf4 {
+  class UserService {
+    + registerUser(dto): User
+    + loginUser(email, pw): Token
+  }
+  class EmailService {
+    + sendWelcomeEmail(user): void
+  }
+  class AuditLogService {
+    + saveUserLog(user): void
+  }
+  class ReportService {
+    + generateUserReport(): Report
+  }
+  note right of UserService: 각 클래스는 변경 이유가 1개\n수정이 격리되어 영향 범위 최소화
+}
+@enduml` },
+      { name: 'O — OCP', code: `@startuml
+skinparam classAttributeIconSize 0
+title Open/Closed Principle (개방-폐쇄 원칙)
+
+package "❌ 위반 — 조건문으로 확장" #fef2f2 {
+  class DiscountServiceBAD {
+    + calculate(user, price): double
+    note: if GOLD → 10%\nif VIP → 20%\nif NEWBIE → 5%\n새 등급 추가 = 코드 수정
+  }
+}
+
+package "✅ 준수 — 인터페이스로 확장" #f0fdf4 {
+  interface DiscountPolicy {
+    + {abstract} discount(price): double
+  }
+  class GoldDiscount implements DiscountPolicy {
+    + discount(price): double
+    note: 10% 할인
+  }
+  class VIPDiscount implements DiscountPolicy {
+    + discount(price): double
+    note: 20% 할인
+  }
+  class NewbieDiscount implements DiscountPolicy {
+    + discount(price): double
+    note: 5% 할인
+  }
+  class OrderService {
+    - policy: DiscountPolicy
+    + calculatePrice(price): double
+    note: 새 정책 추가 시\nOrderService 수정 불필요
+  }
+  OrderService --> DiscountPolicy
+}
+@enduml` },
+      { name: 'L — LSP', code: `@startuml
+skinparam classAttributeIconSize 0
+title Liskov Substitution Principle (리스코프 치환 원칙)
+
+package "❌ 위반 — 자식이 부모 계약 위반" #fef2f2 {
+  class BirdBAD {
+    + fly(): void
+  }
+  class PenguinBAD extends BirdBAD {
+    + fly(): void
+    note: throw UnsupportedOperation!\n날 수 없는 새가 fly() 구현\n→ LSP 위반
+  }
+}
+
+package "✅ 준수 — 올바른 계층 분리" #f0fdf4 {
+  abstract class Animal {
+    + {abstract} eat(): void
+    + {abstract} move(): void
+  }
+  interface Flyable {
+    + {abstract} fly(): void
+  }
+  class Eagle extends Animal implements Flyable {
+    + eat(): void
+    + move(): void
+    + fly(): void
+  }
+  class Penguin extends Animal {
+    + eat(): void
+    + move(): void
+    note: fly() 없음\n계약 위반 없음
+  }
+}
+@enduml` },
+      { name: 'I — ISP', code: `@startuml
+skinparam classAttributeIconSize 0
+title Interface Segregation Principle (인터페이스 분리 원칙)
+
+package "❌ 위반 — 뚱뚱한 인터페이스" #fef2f2 {
+  interface WorkerBAD {
+    + work(): void
+    + eat(): void
+    + sleep(): void
+  }
+  class RobotBAD implements WorkerBAD {
+    + work(): void
+    + eat(): void
+    note: 로봇은 먹지 않음\n강제 구현 → 빈 메서드
+    + sleep(): void
+    note: 로봇은 자지 않음
+  }
+}
+
+package "✅ 준수 — 역할별 인터페이스 분리" #f0fdf4 {
+  interface Workable {
+    + work(): void
+  }
+  interface Eatable {
+    + eat(): void
+  }
+  interface Sleepable {
+    + sleep(): void
+  }
+  class Human implements Workable, Eatable, Sleepable {
+    + work(): void
+    + eat(): void
+    + sleep(): void
+  }
+  class Robot implements Workable {
+    + work(): void
+    note: 필요한 인터페이스만 구현
+  }
+}
+@enduml` },
+      { name: 'D — DIP', code: `@startuml
+skinparam classAttributeIconSize 0
+title Dependency Inversion Principle (의존성 역전 원칙)
+
+package "❌ 위반 — 구체 클래스에 직접 의존" #fef2f2 {
+  class OrderServiceBAD {
+    - repo: MySQLOrderRepository
+    + placeOrder(dto): void
+    note: 구체 클래스 직접 사용\nMySQL → MongoDB 전환 시\nOrderService 수정 필요
+  }
+  class MySQLOrderRepository {
+    + save(order): void
+  }
+  OrderServiceBAD --> MySQLOrderRepository
+}
+
+package "✅ 준수 — 추상화에 의존" #f0fdf4 {
+  interface OrderRepository {
+    + save(order): Order
+    + findById(id): Order
+    + findByUserId(userId): List
+  }
+  class OrderService {
+    - repo: OrderRepository
+    + placeOrder(dto): void
+    note: 인터페이스에만 의존\n구현체 교체 = 코드 수정 없음
+  }
+  class MySQLOrderRepository implements OrderRepository {
+    + save(order): Order
+    + findById(id): Order
+    + findByUserId(userId): List
+  }
+  class MongoOrderRepository implements OrderRepository {
+    + save(order): Order
+    + findById(id): Order
+    + findByUserId(userId): List
+  }
+  OrderService --> OrderRepository
+}
+@enduml` }
+    ]
+  }
+};
+
+let dgCurrentType = 'usecase';
+let dgZoomLevel = 1.0;
+
+function switchDiagram(type, el) {
+  dgCurrentType = type;
+  document.querySelectorAll('.dg-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  const tmpl = DG_TEMPLATES[type];
+  if (!tmpl) return;
+
+  // 템플릿 버튼
+  const btnContainer = document.getElementById('dg-template-btns');
+  if (btnContainer) {
+    btnContainer.innerHTML = tmpl.templates.map((t,i) =>
+      `<button class="btn btn-sm btn-ghost" style="font-size:11px" onclick="loadDgTemplate(${i})">${t.name}</button>`
+    ).join('');
+  }
+
+  // SOLID 패널 토글
+  const solidPanel = document.getElementById('solid-panel');
+  if (solidPanel) {
+    if (type === 'solid') {
+      solidPanel.style.display = 'block';
+      renderSolidCards();
+    } else {
+      solidPanel.style.display = 'none';
+    }
+  }
+
+  // 기본 템플릿 로드
+  loadDgTemplate(0);
+}
+
+function loadDgTemplate(idx) {
+  const tmpl = DG_TEMPLATES[dgCurrentType];
+  if (!tmpl || !tmpl.templates[idx]) return;
+  document.getElementById('dg-code-editor').value = tmpl.templates[idx].code.trim();
+  dgRender();
+}
+
+function renderSolidCards() {
+  const solidTypes = [
+    { letter:'S', name:'SRP', full:'Single Responsibility', desc:'클래스는 변경 이유가 단 하나여야 한다. 하나의 책임만 가진다.' },
+    { letter:'O', name:'OCP', full:'Open/Closed', desc:'확장에는 열려 있고 수정에는 닫혀 있어야 한다.' },
+    { letter:'L', name:'LSP', full:'Liskov Substitution', desc:'자식 클래스는 부모 클래스를 완전히 대체할 수 있어야 한다.' },
+    { letter:'I', name:'ISP', full:'Interface Segregation', desc:'클라이언트는 사용하지 않는 인터페이스에 의존하지 않아야 한다.' },
+    { letter:'D', name:'DIP', full:'Dependency Inversion', desc:'고수준 모듈은 저수준 모듈에 의존하지 않고, 추상화에 의존해야 한다.' },
+  ];
+  const container = document.getElementById('solid-cards');
+  if (!container) return;
+  container.innerHTML = solidTypes.map((s,i) => `
+    <div class="solid-card" onclick="loadSolidExample(${i})" id="solid-card-${i}">
+      <div class="solid-card-letter">${s.letter}</div>
+      <div class="solid-card-name">${s.name}</div>
+      <div class="solid-card-full">${s.full} Principle</div>
+      <div class="solid-card-desc">${s.desc}</div>
+    </div>
+  `).join('');
+}
+
+function loadSolidExample(idx) {
+  document.querySelectorAll('.solid-card').forEach((c,i) => c.classList.toggle('active', i===idx));
+  const keys = ['S — SRP','O — OCP','L — LSP','I — ISP','D — DIP'];
+  const tmpl = DG_TEMPLATES['solid'];
+  const found = tmpl.templates.find(t => t.name === keys[idx]);
+  if (found) {
+    document.getElementById('dg-code-editor').value = found.code.trim();
+    dgRender();
+  }
+}
+
+function dgRender() {
+  const code = document.getElementById('dg-code-editor').value.trim();
+  if (!code) return;
+  const status = document.getElementById('dg-render-status');
+  const preview = document.getElementById('dg-preview-inner');
+  if (status) status.textContent = '렌더링 중...';
+
+  // PlantUML 서버 사용 (encode → img)
+  try {
+    const encoded = encodePlantUML(code);
+    const url = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+    const img = document.createElement('img');
+    img.style.cssText = 'max-width:100%;display:block;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.08)';
+    img.alt = 'Diagram';
+    img.onload = () => {
+      if (status) status.textContent = '✓ 렌더링 완료';
+      preview.innerHTML = '';
+      preview.appendChild(img);
+    };
+    img.onerror = () => {
+      if (status) status.textContent = '⚠ 렌더링 실패 — 코드를 확인하세요';
+      preview.innerHTML = `<div style="color:var(--red);font-size:13px;padding:20px">렌더링에 실패했습니다.<br>PlantUML 문법을 확인하거나 인터넷 연결을 확인하세요.</div>`;
+    };
+    img.src = url;
+  } catch(e) {
+    if (status) status.textContent = '⚠ 인코딩 오류';
+  }
+}
+
+// PlantUML deflate + base64 인코딩
+function encodePlantUML(src) {
+  const data = encodeURIComponent(src)
+    .replace(/%([0-9A-F]{2})/g, (_,p) => String.fromCharCode(parseInt(p,16)));
+  const compressed = deflateRaw(src);
+  return encode64(compressed);
+}
+
+function encode64(data) {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_';
+  let r = '';
+  for (let i = 0; i < data.length; i += 3) {
+    const b0 = data.charCodeAt(i) & 0xFF;
+    const b1 = i+1 < data.length ? data.charCodeAt(i+1) & 0xFF : 0;
+    const b2 = i+2 < data.length ? data.charCodeAt(i+2) & 0xFF : 0;
+    r += chars[(b0>>2)&63] + chars[((b0&3)<<4)|((b1>>4)&15)] +
+         chars[((b1&15)<<2)|((b2>>6)&3)] + chars[b2&63];
+  }
+  return r;
+}
+
+function deflateRaw(str) {
+  // UTF-8 encode
+  const utf8 = unescape(encodeURIComponent(str));
+  // Simple raw deflate via pako if available, else fallback zlib
+  if (window.pako) return String.fromCharCode(...window.pako.deflateRaw(utf8));
+  // Fallback: no compression (plantuml accepts uncompressed with ~)
+  // Use plantuml text encoding instead
+  return utf8;
+}
+
+// pako 로드 (압축용)
+(function() {
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+  s.onload = () => console.log('pako loaded');
+  document.head.appendChild(s);
+})();
+
+// plantuml encoding override — txt endpoint 사용 (compression 불필요)
+function encodePlantUML(src) {
+  // plantuml.com/plantuml/png/ + ~h + hex encoding
+  let hex = '';
+  const utf8 = unescape(encodeURIComponent(src));
+  for (let i = 0; i < utf8.length; i++) {
+    hex += ('0' + utf8.charCodeAt(i).toString(16)).slice(-2);
+  }
+  return '~h' + hex;
+}
+
+function dgZoom(delta) {
+  dgZoomLevel = Math.max(0.3, Math.min(3.0, dgZoomLevel + delta));
+  const inner = document.getElementById('dg-preview-inner');
+  if (inner) inner.style.transform = `scale(${dgZoomLevel})`;
+  const label = document.getElementById('dg-zoom-label');
+  if (label) label.textContent = Math.round(dgZoomLevel * 100) + '%';
+}
+
+function dgZoomReset() {
+  dgZoomLevel = 1.0;
+  const inner = document.getElementById('dg-preview-inner');
+  if (inner) inner.style.transform = 'none';
+  const label = document.getElementById('dg-zoom-label');
+  if (label) label.textContent = '100%';
+}
+
+function dgCopyCode() {
+  const code = document.getElementById('dg-code-editor').value;
+  navigator.clipboard.writeText(code).then(() => toast('✓ PlantUML 코드 복사됨', 'ok'));
+}
+
+function dgDownloadSVG() {
+  const img = document.querySelector('#dg-preview-inner img');
+  if (!img) { toast('먼저 렌더링하세요', 'err'); return; }
+  const a = document.createElement('a');
+  a.href = img.src.replace('/svg/', '/svg/');
+  a.download = `diagram-${dgCurrentType}.svg`;
+  a.target = '_blank';
+  a.click();
+  toast('✓ SVG 저장 — 새 탭에서 다운로드하세요', 'ok');
+}
+
+// nav에 diagrams 추가
+const _origNav2 = window.nav || nav;
+window.nav = function(p) {
+  _origNav2(p);
+  if (p === 'diagrams') {
+    setTimeout(() => {
+      switchDiagram('usecase', document.querySelector('.dg-tab[data-dg="usecase"]'));
+    }, 50);
+  }
+};
+
 (function checkFirstVisit() {
   const done = localStorage.getItem('pos_tour_done');
   const hasData = S.requirements.length > 0 || S.tasks.length > 0;
