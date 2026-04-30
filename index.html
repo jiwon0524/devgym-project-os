@@ -801,6 +801,33 @@ html,body{height:100%;overflow:hidden}
 .solid-card-letter{font-size:24px;font-weight:800;color:var(--accent);line-height:1;margin-bottom:4px;font-family:'JetBrains Mono',monospace}
 .solid-card-name{font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px}
 .solid-card-full{font-size:10px;color:var(--t3);margin-bottom:5px}
+
+/* ---- COLLABORATION ---- */
+.collab-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start}
+.collab-card{background:#fff;border:1px solid var(--bd1);border-radius:8px;padding:16px}
+.collab-title{font-size:13px;font-weight:800;color:var(--t1);margin-bottom:6px}
+.collab-copy{font-size:12.5px;color:var(--t2);line-height:1.65}
+.collab-list{display:grid;gap:10px;margin-top:12px}
+.collab-row{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:start;padding:12px;border:1px solid var(--bd2);border-radius:7px;background:var(--bg2)}
+.collab-step{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#e0f2fe;color:#0369a1;font-size:12px;font-weight:800}
+.collab-row-title{font-size:12.5px;font-weight:800;color:var(--t1);margin-bottom:3px}
+.collab-row-body{font-size:11.5px;color:var(--t3);line-height:1.55}
+.collab-pill{font-size:10.5px;font-weight:800;padding:3px 7px;border:1px solid var(--bd2);border-radius:999px;background:#fff;color:var(--t3);white-space:nowrap}
+.collab-pill.ready{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
+.collab-pill.review{border-color:#fde68a;background:#fffbeb;color:#b45309}
+.collab-pill.backend{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8}
+.collab-stack{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+.collab-metric{border:1px solid var(--bd2);border-radius:7px;padding:11px;background:#fff}
+.collab-metric-num{font-size:20px;font-weight:900;color:var(--t1);line-height:1}
+.collab-metric-label{font-size:11px;color:var(--t3);margin-top:5px}
+.kakao-box{border:1px solid #facc15;background:#fefce8;border-radius:8px;padding:14px}
+.kakao-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}
+.kakao-mark{font-weight:900;color:#3b2f00}
+.thread-preview{display:grid;gap:9px;margin-top:12px}
+.thread-msg{border:1px solid var(--bd2);border-radius:7px;padding:10px;background:#fff}
+.thread-meta{display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:var(--t3);margin-bottom:4px}
+.thread-text{font-size:12px;color:var(--t2);line-height:1.5}
+@media(max-width:980px){.collab-grid,.collab-stack{grid-template-columns:1fr}.collab-row{grid-template-columns:28px 1fr}.collab-pill{grid-column:2}}
 .solid-card-desc{font-size:11px;color:var(--t2);line-height:1.5}
 </style>
 </head>
@@ -840,6 +867,7 @@ html,body{height:100%;overflow:hidden}
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       가이드
     </button>
+    <button class="btn btn-sm" id="auth-status-btn" onclick="nav('collaboration')">Offline</button>
     <button class="btn btn-sm" onclick="openModal('settings')">Settings</button>
     <button class="btn btn-sm btn-primary" onclick="loadSample()">Load Demo</button>
   </div>
@@ -902,6 +930,11 @@ html,body{height:100%;overflow:hidden}
     <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
     <span class="nav-label">Meeting Notes</span>
     <span class="nav-badge" id="nb-mtg">0</span>
+  </div>
+  <div class="nav-item" data-p="collaboration" onclick="nav('collaboration')">
+    <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+    <span class="nav-label">Collaboration</span>
+    <span style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:2px">PLAN</span>
   </div>
   <div class="nav-item" data-p="export" onclick="nav('export')">
     <span class="nav-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
@@ -1286,6 +1319,164 @@ html,body{height:100%;overflow:hidden}
 </div>
 
 <!-- =========================================================
+     COLLABORATION
+     ========================================================= -->
+<div class="page" id="page-collaboration">
+  <div class="page-hdr">
+    <div class="page-hdr-info">
+      <div class="page-hdr-title">Collaboration</div>
+      <div class="page-hdr-sub">카카오 로그인 기반 팀 초대 · 댓글 · 대화 · 알림 설계</div>
+    </div>
+    <div class="page-hdr-actions">
+      <button class="help-btn" onclick="openHelp('collaboration')" title="Collaboration 설계">?</button>
+      <button class="btn" onclick="nav('meeting')">Meeting Notes</button>
+      <button class="btn btn-primary" onclick="nav('tasks')">Task Board</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="collab-card" id="collab-live-panel" style="margin-bottom:14px"></div>
+    <div class="collab-grid">
+      <div class="collab-card">
+        <div class="collab-title">협업 기능 로드맵</div>
+        <div class="collab-copy">
+          현재 ProjectOS는 개인 브라우저 저장소에 데이터를 저장합니다. 협업형 제품으로 확장하려면 로그인, 워크스페이스, 권한, 실시간 동기화, 대화 기록을 백엔드에 올려야 합니다.
+        </div>
+        <div class="collab-list">
+          <div class="collab-row">
+            <div class="collab-step">1</div>
+            <div>
+              <div class="collab-row-title">Kakao Login + 사용자 프로필</div>
+              <div class="collab-row-body">카카오 OAuth로 가입/로그인하고 서비스 내부 userId와 연결합니다. 닉네임, 프로필 이미지는 동의 항목 기준으로 저장합니다.</div>
+            </div>
+            <span class="collab-pill ready">MVP</span>
+          </div>
+          <div class="collab-row">
+            <div class="collab-step">2</div>
+            <div>
+              <div class="collab-row-title">Workspace 초대와 역할</div>
+              <div class="collab-row-body">Owner, Manager, Member, Viewer 권한을 두고 프로젝트별 초대 링크와 만료 시간을 관리합니다.</div>
+            </div>
+            <span class="collab-pill backend">Backend</span>
+          </div>
+          <div class="collab-row">
+            <div class="collab-step">3</div>
+            <div>
+              <div class="collab-row-title">문맥형 댓글과 멘션</div>
+              <div class="collab-row-body">Requirement, Task, Test Case, API Spec에 댓글 스레드를 붙이고 @멘션으로 담당자에게 알림을 보냅니다.</div>
+            </div>
+            <span class="collab-pill backend">Realtime</span>
+          </div>
+          <div class="collab-row">
+            <div class="collab-step">4</div>
+            <div>
+              <div class="collab-row-title">팀 대화와 의사결정 로그</div>
+              <div class="collab-row-body">일반 채팅보다 중요한 것은 결정사항 추적입니다. 대화에서 결정, 액션 아이템, 리스크를 추출해 기존 모듈과 연결합니다.</div>
+            </div>
+            <span class="collab-pill ready">Core</span>
+          </div>
+          <div class="collab-row">
+            <div class="collab-step">5</div>
+            <div>
+              <div class="collab-row-title">KakaoTalk 초대와 알림</div>
+              <div class="collab-row-body">카카오톡 메시지 API로 초대/멘션/마감 알림을 보낼 수 있지만 친구 목록과 메시지 전송 권한 심사가 필요합니다.</div>
+            </div>
+            <span class="collab-pill review">Review</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kakao-box">
+        <div class="kakao-head">
+          <div>
+            <div class="kakao-mark">Kakao Integration</div>
+            <div class="collab-copy">카카오로 묶을 수 있는 기능과 제한</div>
+          </div>
+          <span class="collab-pill review">OAuth + Talk</span>
+        </div>
+        <div class="collab-list">
+          <div class="collab-row">
+            <div class="collab-step">K</div>
+            <div>
+              <div class="collab-row-title">카카오 로그인</div>
+              <div class="collab-row-body">REST API 또는 JavaScript SDK로 구현 가능합니다. 실제 서비스는 토큰 교환을 서버에서 처리하는 편이 안전합니다.</div>
+            </div>
+            <span class="collab-pill ready">가능</span>
+          </div>
+          <div class="collab-row">
+            <div class="collab-step">F</div>
+            <div>
+              <div class="collab-row-title">친구 선택 초대</div>
+              <div class="collab-row-body">친구 피커/친구 목록은 앱 권한이 필요하고, 기본적으로 같은 서비스에 연결된 사용자 중심으로 제한됩니다.</div>
+            </div>
+            <span class="collab-pill review">심사</span>
+          </div>
+          <div class="collab-row">
+            <div class="collab-step">M</div>
+            <div>
+              <div class="collab-row-title">카카오톡 메시지</div>
+              <div class="collab-row-body">초대, 멘션, 마감 알림을 보낼 수 있습니다. 메시지 API 권한과 사용자 동의가 필요합니다.</div>
+            </div>
+            <span class="collab-pill review">심사</span>
+          </div>
+          <div class="collab-row">
+            <div class="collab-step">C</div>
+            <div>
+              <div class="collab-row-title">톡캘린더 일정</div>
+              <div class="collab-row-body">스프린트 리뷰, 마감일, 회의 일정 연동 후보입니다. 권한 범위와 테스트 제한을 별도로 확인해야 합니다.</div>
+            </div>
+            <span class="collab-pill review">후보</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="collab-stack">
+      <div class="collab-metric"><div class="collab-metric-num">4</div><div class="collab-metric-label">권한 역할</div></div>
+      <div class="collab-metric"><div class="collab-metric-num">6</div><div class="collab-metric-label">협업 이벤트</div></div>
+      <div class="collab-metric"><div class="collab-metric-num">3</div><div class="collab-metric-label">카카오 연동 후보</div></div>
+      <div class="collab-metric"><div class="collab-metric-num">1</div><div class="collab-metric-label">실시간 백엔드 필요</div></div>
+    </div>
+
+    <div class="collab-grid" style="margin-top:14px">
+      <div class="collab-card">
+        <div class="collab-title">데이터 모델 초안</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Entity</th><th>Purpose</th><th>Key Fields</th></tr></thead>
+            <tbody>
+              <tr><td>users</td><td>카카오 로그인 사용자</td><td>kakaoId, nickname, avatarUrl</td></tr>
+              <tr><td>workspaces</td><td>팀 단위 협업 공간</td><td>name, ownerId, plan</td></tr>
+              <tr><td>members</td><td>권한과 참여 상태</td><td>workspaceId, userId, role, status</td></tr>
+              <tr><td>comments</td><td>항목별 토론</td><td>targetType, targetId, body, mentions</td></tr>
+              <tr><td>messages</td><td>프로젝트 대화</td><td>channelId, senderId, body, decisionFlag</td></tr>
+              <tr><td>notifications</td><td>앱/카카오톡 알림 큐</td><td>type, recipientId, payload, sentAt</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="collab-card">
+        <div class="collab-title">대화 UX 예시</div>
+        <div class="thread-preview">
+          <div class="thread-msg">
+            <div class="thread-meta"><span>김PM · Requirement FR-003</span><span>결정 필요</span></div>
+            <div class="thread-text">@BE 요구사항 API는 이번 스프린트에 GET/POST까지만 확정하고 PUT/DELETE는 다음 스프린트로 넘길까요?</div>
+          </div>
+          <div class="thread-msg">
+            <div class="thread-meta"><span>박BE · Reply</span><span>Task 연결</span></div>
+            <div class="thread-text">좋습니다. API-003, API-004를 먼저 끝내고 RISK-004로 범위 지연 위험을 등록하겠습니다.</div>
+          </div>
+          <div class="thread-msg">
+            <div class="thread-meta"><span>System</span><span>자동 기록</span></div>
+            <div class="thread-text">결정사항이 Meeting Notes에 추가되고 Task Board에 후속 작업이 연결됩니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
      EXPORT CENTER
      ========================================================= -->
 <div class="page" id="page-export">
@@ -1581,6 +1772,11 @@ html,body{height:100%;overflow:hidden}
       <div class="form-group"><label class="form-label">상태</label>
         <select class="form-select" id="ps-status"><option>Planning</option><option>In Progress</option><option>Testing</option><option>Done</option></select>
       </div>
+      <div style="border-top:1px solid var(--bd1);margin:14px 0 12px"></div>
+      <div class="form-group"><label class="form-label">Supabase URL</label><input class="form-input" id="ps-supabase-url" placeholder="https://your-project.supabase.co"></div>
+      <div class="form-group"><label class="form-label">Supabase Publishable Key</label><input class="form-input" id="ps-supabase-key" placeholder="sb_publishable_... 또는 anon public key"></div>
+      <div class="form-group"><label class="form-label">Kakao Message Function URL</label><input class="form-input" id="ps-kakao-function" placeholder="선택: Supabase Edge Function URL"></div>
+      <div style="font-size:11.5px;color:var(--t3);line-height:1.6">서비스 role key나 카카오 admin key는 브라우저에 넣지 마세요. 카카오톡 메시지 발송은 서버 함수에서 처리해야 합니다.</div>
     </div>
     <div class="modal-footer"><button class="btn" onclick="closeModal('settings')">취소</button><button class="btn btn-primary" onclick="saveSettings()">저장</button></div>
   </div>
@@ -1791,24 +1987,59 @@ html,body{height:100%;overflow:hidden}
      ============================================================ -->
 <script>
 const LS_KEY = 'devgym_pos_v3';
+const CONFIG_KEY = 'devgym_pos_config_v1';
 let S = loadState();
 let editIds = {req:null, task:null, tc:null, api:null, risk:null, meeting:null};
 let curMtgId = null;
+let POS_CONFIG = loadConfig();
+let POS_SUPABASE = null;
+let POS_SESSION = null;
+let POS_SYNC_TIMER = null;
+let POS_REALTIME_CHANNEL = null;
 
 // ── STATE ──────────────────────────────────────────────────────
 function defaultState() {
   return {
     project: {name:'',status:'Planning',tagline:'',start:'',end:'',members:'',roles:'',purpose:'',problem:'',users:'',value:'',features:'',success:''},
     requirements: [], tasks: [], testCases: [], apis: [], risks: [], meetings: [],
+    collaboration: {
+      workspaceId: '',
+      workspaceName: 'DevGym Workspace',
+      inviteCode: '',
+      members: [],
+      comments: [],
+      messages: [],
+      notifications: []
+    },
     _seq: {FR:0, NFR:0, TASK:0, TC:0, API:0, RISK:0, MTG:0}
   };
 }
+function normalizeState(data) {
+  const base = defaultState();
+  const next = Object.assign(base, data || {});
+  next.project = Object.assign(base.project, (data && data.project) || {});
+  next.collaboration = Object.assign(base.collaboration, (data && data.collaboration) || {});
+  next.collaboration.members = next.collaboration.members || [];
+  next.collaboration.comments = next.collaboration.comments || [];
+  next.collaboration.messages = next.collaboration.messages || [];
+  next.collaboration.notifications = next.collaboration.notifications || [];
+  next._seq = Object.assign(base._seq, (data && data._seq) || {});
+  return next;
+}
 function loadState() {
-  try { const s = localStorage.getItem(LS_KEY); if (s) return Object.assign(defaultState(), JSON.parse(s)); } catch(e) {}
+  try { const s = localStorage.getItem(LS_KEY); if (s) return normalizeState(JSON.parse(s)); } catch(e) {}
   return defaultState();
 }
 function save() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e) {}
+  queueCloudSave();
+}
+function loadConfig() {
+  try { return Object.assign({supabaseUrl:'', supabaseKey:'', kakaoFunctionUrl:''}, JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}')); }
+  catch(e) { return {supabaseUrl:'', supabaseKey:'', kakaoFunctionUrl:''}; }
+}
+function saveConfig() {
+  try { localStorage.setItem(CONFIG_KEY, JSON.stringify(POS_CONFIG)); } catch(e) {}
 }
 
 // ── SAMPLE DATA ────────────────────────────────────────────────
@@ -1909,7 +2140,7 @@ function nav(p) {
   const fn = {
     dashboard: renderDashboard, requirements: renderReqs, tasks: renderTasks,
     testcases: renderTCs, timeline: renderTimeline, apispec: renderAPIs,
-    risk: renderRisks, meeting: renderMeetings, export: renderExport, brief: loadBrief
+    risk: renderRisks, meeting: renderMeetings, collaboration: renderCollaboration, export: renderExport, brief: loadBrief
   };
   if (fn[p]) fn[p]();
 }
@@ -1997,10 +2228,21 @@ function updateStatusUI() {
 }
 
 // ── SETTINGS ────────────────────────────────────────────────────
-function initSettings() { sv('ps-name', S.project.name); sv('ps-status', S.project.status); }
+function initSettings() {
+  sv('ps-name', S.project.name);
+  sv('ps-status', S.project.status);
+  sv('ps-supabase-url', POS_CONFIG.supabaseUrl);
+  sv('ps-supabase-key', POS_CONFIG.supabaseKey);
+  sv('ps-kakao-function', POS_CONFIG.kakaoFunctionUrl);
+}
 function saveSettings() {
   S.project.name = v('ps-name'); S.project.status = v('ps-status');
-  save(); closeModal('settings'); updateStatusUI(); renderDashboard();
+  POS_CONFIG.supabaseUrl = v('ps-supabase-url').trim();
+  POS_CONFIG.supabaseKey = v('ps-supabase-key').trim();
+  POS_CONFIG.kakaoFunctionUrl = v('ps-kakao-function').trim();
+  saveConfig();
+  POS_SUPABASE = null;
+  save(); closeModal('settings'); updateStatusUI(); renderDashboard(); updateAuthUI();
   toast('✓ 설정 저장됨', 'ok');
 }
 
@@ -2656,6 +2898,220 @@ function actions2Tasks() {
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────
+// ── COLLABORATION / BACKEND BRIDGE ──────────────────────────────
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const uid = (prefix='id') => prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7);
+
+function currentUserLabel() {
+  const user = POS_SESSION?.user;
+  return user?.user_metadata?.full_name || user?.user_metadata?.name || user?.user_metadata?.nickname || user?.email || 'Local User';
+}
+
+function ensureWorkspace() {
+  const c = S.collaboration;
+  if (!c.workspaceId) c.workspaceId = uid('ws');
+  if (!c.inviteCode) c.inviteCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+  if (!c.members.length) c.members.push({id: uid('mem'), name: currentUserLabel(), role: 'Owner', status: 'Active', joinedAt: today()});
+}
+
+function renderCollaboration() {
+  ensureWorkspace();
+  const c = S.collaboration;
+  const el = document.getElementById('collab-live-panel');
+  if (!el) return;
+  const connected = !!POS_SESSION?.user;
+  const configured = !!(POS_CONFIG.supabaseUrl && POS_CONFIG.supabaseKey);
+  const comments = [...c.comments].slice(-5).reverse();
+  const notifications = [...c.notifications].slice(-5).reverse();
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start">
+      <div>
+        <div class="collab-title">Live Collaboration Console</div>
+        <div class="collab-copy">저장 모드: <b>${configured ? 'Supabase 준비됨' : 'Local fallback'}</b> · 로그인: <b>${connected ? esc(currentUserLabel()) : '미연결'}</b></div>
+        <div class="collab-stack">
+          <div class="collab-metric"><div class="collab-metric-num">${c.members.length}</div><div class="collab-metric-label">Members</div></div>
+          <div class="collab-metric"><div class="collab-metric-num">${c.comments.length}</div><div class="collab-metric-label">Comments</div></div>
+          <div class="collab-metric"><div class="collab-metric-num">${c.notifications.length}</div><div class="collab-metric-label">Notifications</div></div>
+          <div class="collab-metric"><div class="collab-metric-num">${configured ? 'On' : 'Off'}</div><div class="collab-metric-label">Backend</div></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <button class="btn btn-primary" onclick="signInWithKakao()">카카오 로그인</button>
+          <button class="btn" onclick="signOutCollab()">로그아웃</button>
+          <button class="btn" onclick="syncFromCloud()">Supabase에서 불러오기</button>
+          <button class="btn" onclick="syncToCloudNow()">현재 데이터 업로드</button>
+        </div>
+      </div>
+      <div>
+        <div class="collab-title">Workspace</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">워크스페이스명</label><input class="form-input" id="collab-ws-name" value="${esc(c.workspaceName)}"></div>
+          <div class="form-group"><label class="form-label">초대 코드</label><input class="form-input" id="collab-invite-code" value="${esc(c.inviteCode)}" readonly></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="saveWorkspaceMeta()">워크스페이스 저장</button>
+          <button class="btn" onclick="copyInviteLink()">초대 링크 복사</button>
+          <button class="btn" onclick="queueKakaoInvite()">카카오톡 초대 큐</button>
+        </div>
+      </div>
+    </div>
+    <div class="collab-grid" style="margin-top:14px">
+      <div>
+        <div class="collab-title">Members & Roles</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">이름</label><input class="form-input" id="collab-member-name" placeholder="팀원 이름"></div>
+          <div class="form-group"><label class="form-label">역할</label><select class="form-select" id="collab-member-role"><option>Member</option><option>Manager</option><option>Viewer</option><option>Owner</option></select></div>
+        </div>
+        <button class="btn" onclick="addCollabMember()">멤버 추가</button>
+        <div class="collab-list">${c.members.map(m => `<div class="collab-row"><div class="collab-step">${esc((m.name||'?').slice(0,1))}</div><div><div class="collab-row-title">${esc(m.name)}</div><div class="collab-row-body">${esc(m.status)} · joined ${esc(m.joinedAt||'')}</div></div><span class="collab-pill ready">${esc(m.role)}</span></div>`).join('')}</div>
+      </div>
+      <div>
+        <div class="collab-title">Comments / Mentions</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">대상</label><select class="form-select" id="collab-target"><option>Project</option><option>Requirement</option><option>Task</option><option>Test Case</option><option>API Spec</option><option>Risk</option><option>Meeting</option></select></div>
+          <div class="form-group"><label class="form-label">멘션</label><input class="form-input" id="collab-mention" placeholder="@이름"></div>
+        </div>
+        <textarea class="form-textarea" id="collab-comment" placeholder="요구사항, Task, 테스트 케이스 위에서 바로 토론하세요."></textarea>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="addCollabComment()">댓글 추가</button>
+        <div class="thread-preview">${comments.map(x => `<div class="thread-msg"><div class="thread-meta"><span>${esc(x.author)} · ${esc(x.targetType)}</span><span>${esc(x.createdAt)}</span></div><div class="thread-text">${esc(x.body)}</div></div>`).join('') || '<div class="thread-msg"><div class="thread-text">아직 댓글이 없습니다.</div></div>'}</div>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <div class="collab-title">Notification Queue</div>
+      <div class="thread-preview">${notifications.map(n => `<div class="thread-msg"><div class="thread-meta"><span>${esc(n.type)} · ${esc(n.channel)}</span><span>${esc(n.status)}</span></div><div class="thread-text">${esc(n.body)}</div></div>`).join('') || '<div class="thread-msg"><div class="thread-text">멘션이나 카카오 초대가 생기면 알림 큐에 쌓입니다.</div></div>'}</div>
+    </div>`;
+  updateAuthUI();
+}
+
+function saveWorkspaceMeta() {
+  ensureWorkspace();
+  S.collaboration.workspaceName = v('collab-ws-name').trim() || 'DevGym Workspace';
+  save(); renderCollaboration(); toast('✓ 워크스페이스 저장됨', 'ok');
+}
+function copyInviteLink() {
+  ensureWorkspace();
+  const url = `${location.origin}${location.pathname}?invite=${encodeURIComponent(S.collaboration.inviteCode)}`;
+  navigator.clipboard?.writeText(url).then(() => toast('✓ 초대 링크 복사됨', 'ok')).catch(() => toast(url, 'info'));
+}
+function addCollabMember() {
+  ensureWorkspace();
+  const name = v('collab-member-name').trim();
+  if (!name) { toast('팀원 이름을 입력하세요', 'err'); return; }
+  S.collaboration.members.push({id: uid('mem'), name, role: v('collab-member-role') || 'Member', status: 'Invited', joinedAt: today()});
+  S.collaboration.notifications.push({id: uid('noti'), type:'member_invited', channel:'app', status:'queued', body:`${name}님을 ${S.collaboration.workspaceName}에 초대했습니다.`, createdAt:today()});
+  save(); renderCollaboration(); toast('✓ 멤버 초대 큐 생성됨', 'ok');
+}
+function addCollabComment() {
+  ensureWorkspace();
+  const body = v('collab-comment').trim();
+  if (!body) { toast('댓글 내용을 입력하세요', 'err'); return; }
+  const mention = v('collab-mention').trim();
+  const item = {id: uid('cmt'), targetType: v('collab-target') || 'Project', targetId:'', author: currentUserLabel(), body, mentions: mention ? [mention.replace(/^@/,'')] : [], createdAt: today()};
+  S.collaboration.comments.push(item);
+  if (mention) S.collaboration.notifications.push({id: uid('noti'), type:'mention', channel:'app', status:'queued', body:`${mention}님이 ${item.targetType} 댓글에서 멘션되었습니다: ${body}`, createdAt:today()});
+  save(); renderCollaboration(); toast('✓ 댓글 저장됨', 'ok');
+}
+function queueKakaoInvite() {
+  ensureWorkspace();
+  S.collaboration.notifications.push({id: uid('noti'), type:'kakao_invite', channel:'kakao', status:'needs_server', body:`${S.collaboration.workspaceName} 초대 메시지 발송 준비. 카카오 메시지 API 권한과 서버 함수가 필요합니다.`, createdAt:today()});
+  save(); renderCollaboration(); toast('카카오톡 초대는 서버 함수/심사 준비 후 발송됩니다', 'info');
+}
+function queueCloudSave() {
+  if (!POS_CONFIG.supabaseUrl || !POS_CONFIG.supabaseKey || !POS_SESSION?.user) return;
+  clearTimeout(POS_SYNC_TIMER);
+  POS_SYNC_TIMER = setTimeout(() => syncToCloudNow(true), 900);
+}
+async function loadSupabaseSdk() {
+  if (window.supabase?.createClient) return window.supabase;
+  await new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-pos-supabase]');
+    if (existing) { existing.addEventListener('load', resolve, {once:true}); existing.addEventListener('error', reject, {once:true}); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    s.dataset.posSupabase = '1';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return window.supabase;
+}
+async function getSupabaseClient() {
+  if (!POS_CONFIG.supabaseUrl || !POS_CONFIG.supabaseKey) throw new Error('Supabase 설정이 필요합니다. Settings에서 URL과 publishable key를 입력하세요.');
+  if (POS_SUPABASE) return POS_SUPABASE;
+  const lib = await loadSupabaseSdk();
+  POS_SUPABASE = lib.createClient(POS_CONFIG.supabaseUrl, POS_CONFIG.supabaseKey);
+  const { data } = await POS_SUPABASE.auth.getSession();
+  POS_SESSION = data.session;
+  POS_SUPABASE.auth.onAuthStateChange((_event, session) => {
+    POS_SESSION = session;
+    updateAuthUI();
+    if (session?.user) { ensureWorkspace(); save(); subscribeWorkspace(); }
+  });
+  return POS_SUPABASE;
+}
+async function signInWithKakao() {
+  try {
+    const client = await getSupabaseClient();
+    await client.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.href.split('#')[0] } });
+  } catch(e) { toast(e.message || '카카오 로그인 준비 실패', 'err'); }
+}
+async function signOutCollab() {
+  try {
+    const client = await getSupabaseClient();
+    await client.auth.signOut();
+    POS_SESSION = null;
+    updateAuthUI(); renderCollaboration();
+  } catch(e) { toast(e.message || '로그아웃 실패', 'err'); }
+}
+async function syncToCloudNow(silent=false) {
+  try {
+    ensureWorkspace();
+    const client = await getSupabaseClient();
+    if (!POS_SESSION?.user) { if (!silent) toast('카카오 로그인 후 업로드할 수 있습니다', 'err'); return; }
+    const payload = { workspace_id: S.collaboration.workspaceId, owner_id: POS_SESSION.user.id, state: S, updated_at: new Date().toISOString() };
+    const { error } = await client.from('project_snapshots').upsert(payload, { onConflict: 'workspace_id' });
+    if (error) throw error;
+    if (!silent) toast('✓ Supabase 업로드 완료', 'ok');
+  } catch(e) { if (!silent) toast(e.message || 'Supabase 업로드 실패', 'err'); }
+}
+async function syncFromCloud() {
+  try {
+    ensureWorkspace();
+    const client = await getSupabaseClient();
+    if (!POS_SESSION?.user) { toast('카카오 로그인 후 불러올 수 있습니다', 'err'); return; }
+    const { data, error } = await client.from('project_snapshots').select('state').eq('workspace_id', S.collaboration.workspaceId).maybeSingle();
+    if (error) throw error;
+    if (!data?.state) { toast('저장된 Supabase 데이터가 없습니다', 'info'); return; }
+    S = normalizeState(data.state);
+    localStorage.setItem(LS_KEY, JSON.stringify(S));
+    renderAll(); updateBadges(); updateStatusUI(); renderCollaboration();
+    toast('✓ Supabase에서 불러옴', 'ok');
+  } catch(e) { toast(e.message || 'Supabase 불러오기 실패', 'err'); }
+}
+async function subscribeWorkspace() {
+  if (POS_REALTIME_CHANNEL || !POS_SUPABASE || !S.collaboration.workspaceId) return;
+  POS_REALTIME_CHANNEL = POS_SUPABASE
+    .channel('workspace-' + S.collaboration.workspaceId)
+    .on('postgres_changes', { event:'*', schema:'public', table:'project_snapshots', filter:`workspace_id=eq.${S.collaboration.workspaceId}` }, (payload) => {
+      if (payload.new?.state) {
+        S = normalizeState(payload.new.state);
+        localStorage.setItem(LS_KEY, JSON.stringify(S));
+        renderAll(); updateBadges(); updateStatusUI();
+        if (document.getElementById('page-collaboration')?.classList.contains('active')) renderCollaboration();
+      }
+    })
+    .subscribe();
+}
+function updateAuthUI() {
+  const btn = document.getElementById('auth-status-btn');
+  if (!btn) return;
+  if (POS_SESSION?.user) {
+    btn.textContent = 'Kakao On';
+    btn.classList.add('btn-primary');
+  } else {
+    btn.textContent = POS_CONFIG.supabaseUrl ? 'Login Ready' : 'Offline';
+    btn.classList.remove('btn-primary');
+  }
+}
+
 function renderDashboard() {
   const p = S.project;
   document.getElementById('dash-pname').textContent = p.name || '프로젝트명 미설정';
@@ -3386,6 +3842,10 @@ function toast(msg, type='ok') {
 renderDashboard();
 updateBadges();
 updateStatusUI();
+updateAuthUI();
+if (POS_CONFIG.supabaseUrl && POS_CONFIG.supabaseKey) {
+  getSupabaseClient().then(() => updateAuthUI()).catch(() => updateAuthUI());
+}
 
 // ── SIDEBAR TOGGLE (모바일/태블릿) ──────────────────────────────
 function toggleSidebar() {
@@ -3545,6 +4005,16 @@ RISK-002: 서드파티 API 서비스 중단
 [김PM] 클라이언트에 범위 변경 협의 (~3/15)
 [박BE] PG사 연동 가이드 문서화 (~3/12)` },
       { title: '💡 팁', tip: '액션 아이템의 "Task로" 버튼을 누르면 WBS에 자동으로 추가됩니다. 담당자를 [이름] 형식으로 쓰면 자동으로 Owner가 설정됩니다.' }
+    ]
+  },
+  collaboration: {
+    icon: 'C',
+    title: 'Collaboration 설계',
+    sections: [
+      { title: '핵심 방향', body: 'ProjectOS 협업 기능은 단순 채팅보다 요구사항, Task, Test Case, API Spec 위에서 바로 대화하고 결정사항을 추적하는 것이 핵심입니다.' },
+      { title: 'MVP 범위', items: ['카카오 로그인', '워크스페이스 생성', '초대 링크', '멤버 역할', '항목별 댓글', '@멘션 알림', '프로젝트 대화 채널'] },
+      { title: '카카오 연동 주의점', items: ['카카오 로그인은 먼저 붙일 수 있습니다.', '친구 목록과 카카오톡 메시지는 권한 심사가 필요합니다.', '친구 초대는 모든 카카오톡 친구가 아니라 조건을 만족하는 서비스 사용자 중심으로 제한됩니다.'] },
+      { title: '추천 백엔드', tip: 'Supabase나 Firebase처럼 Auth, Realtime, Database가 함께 있는 백엔드로 시작하면 현재 단일 HTML 앱을 협업형 앱으로 옮기기 좋습니다.' }
     ]
   },
   diagrams: {
