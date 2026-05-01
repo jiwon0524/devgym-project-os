@@ -2367,6 +2367,7 @@ function initReqModal(id) {
 }
 function previewReqId() { sv('r-id', peekId(v('r-type'))); }
 function saveReq() {
+  if (!requireProjectEdit('요구사항 저장')) return;
   const title = v('r-title').trim();
   if (!title) { hiErr('r-title'); toast('제목을 입력하세요','err'); return; }
   const type = v('r-type');
@@ -2387,6 +2388,7 @@ function saveReq() {
   toast(editIds.req ? '✓ 요구사항 수정됨' : '✓ 요구사항 추가됨', 'ok');
 }
 function delReq() {
+  if (!requireProjectEdit('요구사항 삭제')) return;
   if (!confirm('요구사항을 삭제하시겠습니까?\n연결된 Task/TC/API의 reqId가 초기화됩니다.')) return;
   const id = editIds.req;
   S.requirements = S.requirements.filter(x => x.id !== id);
@@ -2483,6 +2485,7 @@ function initTaskModal(id, defaultStatus) {
   }
 }
 function saveTask() {
+  if (!requireProjectEdit('Task 저장')) return;
   const title = v('t-title').trim();
   if (!title) { hiErr('t-title'); toast('작업명을 입력하세요','err'); return; }
   const prog = parseInt(v('t-prog'))||0;
@@ -2498,12 +2501,14 @@ function saveTask() {
   toast(editIds.task ? '✓ 작업 수정됨' : '✓ 작업 추가됨', 'ok');
 }
 function delTask() {
+  if (!requireProjectEdit('Task 삭제')) return;
   if (!confirm('작업을 삭제하시겠습니까?')) return;
   S.tasks = S.tasks.filter(x => x.id !== editIds.task);
   save(); closeModal('add-task'); renderTasks(); updateBadges(); renderDashboard();
   toast('삭제됨','info');
 }
 function moveTask(id, status) {
+  if (!requireProjectEdit('Task 이동')) return;
   const t = S.tasks.find(x => x.id === id);
   if (t) { t.status = status; if (status==='Done') t.progress = 100; logActivity('task_moved', `${t.title} → ${status}`, 'Task', id); save(); renderTasks(); renderDashboard(); }
 }
@@ -2598,6 +2603,7 @@ function initTCModal(id) {
   }
 }
 function saveTC() {
+  if (!requireProjectEdit('Test Case 저장')) return;
   const title = v('tc-title').trim();
   if (!title) { hiErr('tc-title'); toast('테스트명을 입력하세요','err'); return; }
   if (editIds.tc) {
@@ -2612,11 +2618,13 @@ function saveTC() {
   toast(editIds.tc ? '✓ TC 수정됨' : '✓ TC 추가됨', 'ok');
 }
 function delTC() {
+  if (!requireProjectEdit('Test Case 삭제')) return;
   if (!confirm('삭제하시겠습니까?')) return;
   S.testCases = S.testCases.filter(x => x.id !== editIds.tc);
   save(); closeModal('add-tc'); renderTCs(); updateBadges(); renderDashboard(); toast('삭제됨','info');
 }
 function updateTCStatus(id, status) {
+  if (!requireProjectEdit('Test Case 상태 변경')) return;
   const tc = S.testCases.find(x => x.id === id);
   if (tc) { tc.status = status; logActivity('testcase_status_changed', `${tc.title} → ${status}`, 'Test Case', id); save(); renderTCs(); renderDashboard(); }
 }
@@ -2755,6 +2763,7 @@ function initAPIModal(id) {
   }
 }
 function saveAPI() {
+  if (!requireProjectEdit('API 저장')) return;
   const endpoint = v('api-endpoint').trim();
   if (!endpoint) { hiErr('api-endpoint'); toast('Endpoint를 입력하세요','err'); return; }
   if (editIds.api) {
@@ -2769,6 +2778,7 @@ function saveAPI() {
   toast(editIds.api ? '✓ API 수정됨' : '✓ API 추가됨', 'ok');
 }
 function delAPI() {
+  if (!requireProjectEdit('API 삭제')) return;
   if (!confirm('삭제하시겠습니까?')) return;
   S.apis = S.apis.filter(x => x.id !== editIds.api);
   save(); closeModal('add-api'); renderAPIs(); updateBadges(); toast('삭제됨','info');
@@ -2823,6 +2833,7 @@ function initRiskModal(id) {
   }
 }
 function saveRisk() {
+  if (!requireProjectEdit('Risk 저장')) return;
   const title = v('risk-title').trim();
   if (!title) { hiErr('risk-title'); toast('리스크명을 입력하세요','err'); return; }
   if (editIds.risk) {
@@ -2837,6 +2848,7 @@ function saveRisk() {
   toast(editIds.risk ? '✓ 리스크 수정됨' : '✓ 리스크 추가됨', 'ok');
 }
 function delRisk() {
+  if (!requireProjectEdit('Risk 삭제')) return;
   if (!confirm('삭제?')) return;
   S.risks = S.risks.filter(x => x.id !== editIds.risk);
   save(); closeModal('add-risk'); renderRisks(); updateBadges(); toast('삭제됨','info');
@@ -2897,6 +2909,7 @@ function initMeetingModal(id) {
   }
 }
 function saveMeeting() {
+  if (!requireProjectEdit('회의록 저장')) return;
   const title = v('mtg-title').trim();
   if (!title) { hiErr('mtg-title'); toast('회의 제목을 입력하세요','err'); return; }
   if (editIds.meeting) {
@@ -2911,6 +2924,7 @@ function saveMeeting() {
   toast(editIds.meeting ? '✓ 회의록 수정됨' : '✓ 회의록 추가됨', 'ok');
 }
 function delMeeting() {
+  if (!requireProjectEdit('회의록 삭제')) return;
   if (!confirm('삭제?')) return;
   S.meetings = S.meetings.filter(x => x.id !== editIds.meeting);
   save(); closeModal('add-meeting'); renderMeetings(); updateBadges(); toast('삭제됨','info');
@@ -3003,12 +3017,49 @@ function currentUserLabel() {
   return user?.user_metadata?.full_name || user?.user_metadata?.name || user?.user_metadata?.nickname || user?.email || 'Local User';
 }
 
+function newWorkspaceId() {
+  return crypto?.randomUUID ? crypto.randomUUID() : uid('ws');
+}
+
+function currentMember() {
+  ensureWorkspace();
+  const label = currentUserLabel();
+  return S.collaboration.members.find(m => m.userId && POS_SESSION?.user?.id && m.userId === POS_SESSION.user.id)
+    || S.collaboration.members.find(m => m.name === label)
+    || S.collaboration.members.find(m => m.role === 'Owner')
+    || null;
+}
+
+function currentRole() {
+  return currentMember()?.role || 'Owner';
+}
+
+function canManageWorkspace() {
+  return ['Owner', 'Manager'].includes(currentRole());
+}
+
+function canEditProject() {
+  return ['Owner', 'Manager', 'Member'].includes(currentRole());
+}
+
+function requireProjectEdit(action='수정') {
+  if (canEditProject()) return true;
+  toast(`Viewer 권한은 ${action}할 수 없습니다`, 'err');
+  return false;
+}
+
+function requireWorkspaceManage(action='관리') {
+  if (canManageWorkspace()) return true;
+  toast(`Owner/Manager만 ${action}할 수 있습니다`, 'err');
+  return false;
+}
+
 function ensureWorkspace() {
   const c = S.collaboration;
-  if (!c.workspaceId) c.workspaceId = uid('ws');
+  if (!c.workspaceId) c.workspaceId = newWorkspaceId();
   if (!c.inviteCode) c.inviteCode = Math.random().toString(36).slice(2, 10).toUpperCase();
   if (!c.personalCode) c.personalCode = 'U-' + Math.random().toString(36).slice(2, 8).toUpperCase();
-  if (!c.members.length) c.members.push({id: uid('mem'), name: currentUserLabel(), role: 'Owner', status: 'Active', joinedAt: today()});
+  if (!c.members.length) c.members.push({id: uid('mem'), userId: POS_SESSION?.user?.id || '', name: currentUserLabel(), role: 'Owner', status: 'Active', joinedAt: today()});
 }
 
 function traceMetrics() {
@@ -3029,6 +3080,29 @@ function traceMetrics() {
     orphanTasks: S.tasks.filter(t => !t.reqId).length,
     coverage: reqs ? Math.round((fullyCovered / reqs) * 100) : 0
   };
+}
+
+function productionReadiness() {
+  const tm = traceMetrics();
+  const hasBackend = !!(POS_CONFIG.supabaseUrl && POS_CONFIG.supabaseKey);
+  const hasAuth = !!POS_SESSION?.user;
+  const roleOk = S.collaboration.members.some(m => m.role === 'Owner' && m.status === 'Active');
+  const commentOk = S.collaboration.comments.length > 0 || S.collaboration.decisions.length > 0;
+  const auditOk = S.collaboration.activity.length > 0;
+  const githubOk = !!S.github.repository || !!POS_CONFIG.githubFunctionUrl;
+  const release = releaseReadiness(S.requirements.map(r=>({r, q:requirementQuality(r)})));
+  const checks = [
+    {label:'Backend configured', ok:hasBackend, action:'Settings에 Supabase URL/key 입력'},
+    {label:'Signed-in workspace owner', ok:hasAuth && roleOk, action:'Login 후 워크스페이스 업로드'},
+    {label:'Server-ready workspace ID', ok:/^[0-9a-f-]{36}$/i.test(S.collaboration.workspaceId || ''), action:'새 워크스페이스 생성 또는 업로드'},
+    {label:'Role model exists', ok:S.collaboration.members.length > 0 && roleOk, action:'Owner/Manager/Member/Viewer 정리'},
+    {label:'Traceability coverage', ok:tm.coverage >= 70 || tm.reqs === 0, action:'Requirement마다 Task와 TC 연결'},
+    {label:'Audit/activity log', ok:auditOk, action:'주요 변경 이력 생성'},
+    {label:'Decision/comment flow', ok:commentOk, action:'댓글 또는 결정사항 기록'},
+    {label:'Release readiness', ok:release.score >= 80, action:'Quality Coach의 Release Readiness 보완'},
+    {label:'GitHub evidence', ok:githubOk, action:'GitHub repo 또는 proxy 연결'}
+  ];
+  return {score: Math.round(checks.filter(c=>c.ok).length / checks.length * 100), checks};
 }
 
 function logActivity(type, body, targetType='Project', targetId='') {
@@ -3057,6 +3131,7 @@ function renderCollaboration() {
   const decisions = [...c.decisions].slice(-5).reverse();
   const activity = [...c.activity].slice(-8).reverse();
   const tm = traceMetrics();
+  const prod = productionReadiness();
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start">
       <div>
@@ -3119,6 +3194,19 @@ function renderCollaboration() {
       <div class="collab-title">Notification Queue</div>
       <div class="thread-preview">${notifications.map(n => `<div class="thread-msg"><div class="thread-meta"><span>${esc(n.type)} · ${esc(n.channel)}</span><span>${esc(n.status)}</span></div><div class="thread-text">${esc(n.body)}</div></div>`).join('') || '<div class="thread-msg"><div class="thread-text">멘션이나 카카오 초대가 생기면 알림 큐에 쌓입니다.</div></div>'}</div>
     </div>
+    <div class="collab-card" style="margin-top:14px">
+      <div class="collab-title">Production Readiness</div>
+      <div class="collab-copy">실무 투입 전 필요한 백엔드, 권한, 감사로그, 추적성, 릴리즈 준비 상태를 한 화면에서 점검합니다.</div>
+      <div class="collab-stack" style="margin-top:10px">
+        <div class="collab-metric"><div class="collab-metric-num">${prod.score}%</div><div class="collab-metric-label">실무 준비도</div></div>
+        <div class="collab-metric"><div class="collab-metric-num">${currentRole()}</div><div class="collab-metric-label">현재 권한</div></div>
+        <div class="collab-metric"><div class="collab-metric-num">${tm.coverage}%</div><div class="collab-metric-label">Traceability</div></div>
+        <div class="collab-metric"><div class="collab-metric-num">${activity.length}</div><div class="collab-metric-label">Recent Audit</div></div>
+      </div>
+      <div class="collab-list">
+        ${prod.checks.map(c => `<div class="collab-row"><div class="collab-step">${c.ok?'OK':'FIX'}</div><div><div class="collab-row-title">${esc(c.label)}</div><div class="collab-row-body">${esc(c.ok ? '실무 기준 통과' : c.action)}</div></div><span class="collab-pill ${c.ok?'ready':'review'}">${c.ok?'Ready':'Needed'}</span></div>`).join('')}
+      </div>
+    </div>
     <div class="collab-grid" style="margin-top:14px">
       <div class="collab-card">
         <div class="collab-title">Traceability Health</div>
@@ -3177,15 +3265,17 @@ function joinWorkspaceByCode() {
   save(); renderCollaboration(); toast('✓ 참여 요청이 생성되었습니다', 'ok');
 }
 function addCollabMember() {
+  if (!requireWorkspaceManage('멤버 초대')) return;
   ensureWorkspace();
   const name = v('collab-member-name').trim();
   if (!name) { toast('팀원 이름을 입력하세요', 'err'); return; }
-  S.collaboration.members.push({id: uid('mem'), name, role: v('collab-member-role') || 'Member', status: 'Invited', joinedAt: today()});
+  S.collaboration.members.push({id: uid('mem'), userId: '', name, role: v('collab-member-role') || 'Member', status: 'Invited', joinedAt: today()});
   S.collaboration.notifications.push({id: uid('noti'), type:'member_invited', channel:'app', status:'queued', body:`${name}님을 ${S.collaboration.workspaceName}에 초대했습니다.`, createdAt:today()});
   logActivity('member_invited', `${name}님을 ${v('collab-member-role') || 'Member'} 역할로 초대했습니다.`, 'Workspace', S.collaboration.workspaceId);
   save(); renderCollaboration(); toast('✓ 멤버 초대 큐 생성됨', 'ok');
 }
 function addCollabComment() {
+  if (!requireProjectEdit('댓글 작성')) return;
   ensureWorkspace();
   const body = v('collab-comment').trim();
   if (!body) { toast('댓글 내용을 입력하세요', 'err'); return; }
@@ -3197,6 +3287,7 @@ function addCollabComment() {
   save(); renderCollaboration(); toast('✓ 댓글 저장됨', 'ok');
 }
 function addDecision() {
+  if (!requireProjectEdit('결정사항 기록')) return;
   ensureWorkspace();
   const body = v('decision-body').trim();
   if (!body) { toast('결정사항을 입력하세요', 'err'); return; }
@@ -3308,11 +3399,32 @@ function closeLoginMenu() {
 async function syncToCloudNow(silent=false) {
   try {
     ensureWorkspace();
+    if (!requireProjectEdit('Supabase 업로드')) return;
     const client = await getSupabaseClient();
     if (!POS_SESSION?.user) { if (!silent) toast('카카오 로그인 후 업로드할 수 있습니다', 'err'); return; }
+    await client.from('workspaces').upsert({
+      id: S.collaboration.workspaceId,
+      name: S.collaboration.workspaceName || 'ProjectOS Workspace',
+      owner_id: POS_SESSION.user.id,
+      invite_code: S.collaboration.inviteCode,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+    await client.from('workspace_members').upsert({
+      workspace_id: S.collaboration.workspaceId,
+      user_id: POS_SESSION.user.id,
+      display_name: currentUserLabel(),
+      role: 'Owner',
+      status: 'Active'
+    }, { onConflict: 'workspace_id,user_id' });
     const payload = { workspace_id: S.collaboration.workspaceId, owner_id: POS_SESSION.user.id, state: S, updated_at: new Date().toISOString() };
     const { error } = await client.from('project_snapshots').upsert(payload, { onConflict: 'workspace_id' });
     if (error) throw error;
+    await client.from('snapshot_versions').insert({
+      workspace_id: S.collaboration.workspaceId,
+      actor_id: POS_SESSION.user.id,
+      summary: 'ProjectOS snapshot uploaded',
+      state: S
+    });
     if (!silent) toast('✓ Supabase 업로드 완료', 'ok');
   } catch(e) { if (!silent) toast(e.message || 'Supabase 업로드 실패', 'err'); }
 }

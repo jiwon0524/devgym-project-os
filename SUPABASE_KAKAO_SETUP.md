@@ -52,9 +52,12 @@ Once Supabase is configured, the **Collaboration** page can:
 - sign in with Kakao
 - keep Kakao login separate from workspace membership
 - join a workspace only through an invite code/link or a queued KakaoTalk invite
+- create a server-ready workspace row and owner membership during upload
 - upload the current ProjectOS snapshot to Supabase
 - load the snapshot from Supabase
+- save snapshot versions for audit/history
 - keep decision logs and activity timeline data inside the project snapshot
+- block Viewer users from editing project artifacts in the client
 - keep local fallback behavior when Supabase is not configured
 
 Recommended product rule:
@@ -70,6 +73,13 @@ ProjectOS is designed as a traceable collaboration OS, not a generic note app. T
 - Decision logs with target type and target ID
 - Activity timeline entries for requirement, task, test case, API, risk, and meeting changes
 - Traceability health metrics such as Requirements covered by both Tasks and Test Cases
+- Production Readiness checks for backend, auth, role model, audit trail, release readiness, and GitHub evidence
+
+Practical production rule:
+- Owner and Manager can manage workspace members.
+- Owner, Manager, and Member can edit project artifacts.
+- Viewer can read but should not edit artifacts.
+- Server RLS is the source of truth; client-side button guards are only a UX layer.
 
 ## 5. KakaoTalk invite/message
 

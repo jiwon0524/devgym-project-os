@@ -32,6 +32,7 @@ async function main() {
     collaborationCommentAdded: false,
     collaborationDecisionAdded: false,
     collaborationJoinQueued: false,
+    productionReadinessVisible: false,
     loginMenuOpens: false,
     logoutHiddenWhenLoggedOut: false,
     coachVisibleAfterClick: false,
@@ -73,6 +74,7 @@ async function main() {
   result.loginMenuOpens = await page.locator("#login-menu").isVisible();
   result.logoutHiddenWhenLoggedOut = !(await page.locator("#logout-action-btn").isVisible());
   result.collaborationJoinQueued = await page.locator("#collab-join-code").isVisible();
+  result.productionReadinessVisible = await page.getByText("Production Readiness").isVisible();
   await page.locator("#collab-member-name").fill("테스트 멤버");
   await page.locator("#collab-member-role").selectOption("Manager");
   await page.locator('button[onclick="addCollabMember()"]').click();
@@ -88,7 +90,7 @@ async function main() {
   await page.locator('[data-p="coach"]').click();
   result.coachVisibleAfterClick = await page.locator("#page-coach").isVisible();
   result.coachReviewBoardVisible = await page.getByText("Developer PM Review Board").isVisible();
-  result.releaseReadinessVisible = await page.getByText("Release Readiness").isVisible();
+  result.releaseReadinessVisible = await page.locator(".collab-title", { hasText: "Release Readiness" }).isVisible();
   await page.locator('[data-p="github"]').click();
   result.githubVisibleAfterClick = await page.locator("#page-github").isVisible();
   result.githubIssueCreateButtonVisible = await page.locator('button[onclick="createGitHubIssueFromTask()"]').isVisible();
