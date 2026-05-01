@@ -834,6 +834,13 @@ html,body{height:100%;overflow:hidden}
 .thread-text{font-size:12px;color:var(--t2);line-height:1.5}
 @media(max-width:980px){.collab-grid,.collab-stack{grid-template-columns:1fr}.collab-row{grid-template-columns:28px 1fr}.collab-pill{grid-column:2}}
 .solid-card-desc{font-size:11px;color:var(--t2);line-height:1.5}
+.dg-purpose-panel{background:#fff;border-bottom:1px solid var(--bd1);padding:12px 18px;flex-shrink:0}
+.dg-purpose-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.dg-purpose-card{border:1px solid var(--bd2);border-radius:8px;background:var(--bg2);padding:11px 12px;min-height:82px}
+.dg-purpose-label{font-size:10.5px;font-weight:800;color:var(--t3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px}
+.dg-purpose-text{font-size:12px;line-height:1.55;color:var(--t2)}
+@media(max-width:1100px){.dg-purpose-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.dg-purpose-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -864,7 +871,7 @@ html,body{height:100%;overflow:hidden}
   <div class="proj-name-top" id="topbar-pname">—</div>
   <div class="topbar-right">
     <div class="status-pill planning" id="status-pill"><span class="status-dot"></span><span id="status-text">PLANNING</span></div>
-    <button class="btn btn-sm" onclick="openTemplateGallery()" title="템플릿으로 시작하기">
+    <button class="btn btn-sm" style="display:none" onclick="openTemplateGallery()" title="템플릿으로 시작하기">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       템플릿
     </button>
@@ -984,7 +991,7 @@ html,body{height:100%;overflow:hidden}
   <div class="page-hdr">
     <div class="page-hdr-info">
       <div class="page-hdr-title" id="dash-pname">프로젝트명 미설정</div>
-      <div class="page-hdr-sub" id="dash-psub">Load Demo 또는 템플릿으로 시작하세요</div>
+      <div class="page-hdr-sub" id="dash-psub">Load Demo로 학사 도구 샘플을 불러와 시작하세요</div>
     </div>
     <div class="page-hdr-actions">
       <button class="help-btn" onclick="openHelp('dashboard')" title="Dashboard 사용법">?</button>
@@ -1765,6 +1772,9 @@ html,body{height:100%;overflow:hidden}
       <button class="dg-tab" data-dg="component" onclick="switchDiagram('component',this)">Component</button>
       <button class="dg-tab" data-dg="solid" onclick="switchDiagram('solid',this)">SOLID 원칙</button>
     </div>
+    <div class="dg-purpose-panel">
+      <div class="dg-purpose-grid" id="dg-purpose-cards"></div>
+    </div>
 
     <!-- 본문: 편집기 + 미리보기 -->
     <div style="display:flex;flex:1;overflow:hidden;min-height:0">
@@ -2126,6 +2136,7 @@ function saveConfig() {
 
 // ── SAMPLE DATA ────────────────────────────────────────────────
 function loadSample() {
+  return loadAcademicToolDemo();
   if (S.requirements.length > 0 && !confirm('기존 데이터를 샘플로 교체합니다. 계속하시겠습니까?')) return;
   S = defaultState();
   S.project = {
@@ -3873,7 +3884,7 @@ function renderCoach() {
 function renderDashboard() {
   const p = S.project;
   document.getElementById('dash-pname').textContent = p.name || '프로젝트명 미설정';
-  document.getElementById('dash-psub').textContent = p.tagline || 'Load Demo 버튼으로 시작하거나 Project Brief를 작성하세요';
+  document.getElementById('dash-psub').textContent = p.tagline || 'Load Demo 버튼으로 학사 도구 샘플을 불러오거나 Project Brief를 작성하세요';
 
   const reqs = S.requirements, tasks = S.tasks, tcs = S.testCases;
   const done = tasks.filter(t=>t.status==='Done').length;
@@ -6238,10 +6249,74 @@ end note
 let dgCurrentType = 'usecase';
 let dgZoomLevel = 1.0;
 
+const DG_PURPOSES = {
+  usecase: {
+    when: '요구사항 도출 초기에 사용합니다.',
+    why: '학생, 교수, 교무처가 어떤 기능을 쓰는지 범위를 합의합니다.',
+    output: '액터, 핵심 유스케이스, include/extend 관계',
+    check: '요구사항 FR 목록과 빠진 사용자 역할이 없는지 확인합니다.'
+  },
+  class: {
+    when: '도메인 설계와 백엔드 모델링 전에 사용합니다.',
+    why: '학생, 강좌, 수강신청, 성적 같은 핵심 객체의 책임과 관계를 정리합니다.',
+    output: '클래스, 속성, 메서드, 연관/집합/상속 관계',
+    check: '하나의 클래스가 너무 많은 책임을 갖고 있지 않은지 확인합니다.'
+  },
+  sequence: {
+    when: 'API 흐름이나 서비스 간 호출 순서를 정할 때 사용합니다.',
+    why: '수강신청처럼 검증 순서가 중요한 기능에서 실패 지점을 명확히 합니다.',
+    output: '사용자 요청, UI, API, 서비스, DB 간 메시지 순서',
+    check: '성공 흐름뿐 아니라 실패/예외 흐름이 포함됐는지 확인합니다.'
+  },
+  erd: {
+    when: 'DB 설계와 Supabase/Firebase 이전 전에 사용합니다.',
+    why: '데이터 중복, FK, 권한 정책, 감사로그 저장 위치를 먼저 결정합니다.',
+    output: '테이블, PK/FK, 관계, 주요 컬럼',
+    check: '개인정보/성적/상담 데이터에 감사로그와 권한 기준이 붙었는지 확인합니다.'
+  },
+  activity: {
+    when: '업무 프로세스와 분기 조건을 정리할 때 사용합니다.',
+    why: '수강신청, 성적 이의신청, 졸업요건 판정처럼 조건이 많은 흐름을 한눈에 봅니다.',
+    output: '시작/종료, 처리 단계, 조건 분기, 병렬 흐름',
+    check: '거절/실패/기간 만료 같은 예외 경로가 빠지지 않았는지 확인합니다.'
+  },
+  component: {
+    when: '아키텍처와 배포 구조를 정할 때 사용합니다.',
+    why: '프론트, 인증, 수강신청, 성적, 알림, 감사로그 서비스를 분리해서 봅니다.',
+    output: '컴포넌트, 외부 시스템, DB/큐, 의존 관계',
+    check: '민감 데이터 서비스가 불필요하게 노출되지 않는지 확인합니다.'
+  },
+  solid: {
+    when: '객체지향 설계 품질을 점검할 때 사용합니다.',
+    why: '수강신청 검증 규칙처럼 자주 바뀌는 정책을 안전하게 확장합니다.',
+    output: '인터페이스, 정책 클래스, 서비스 책임 분리',
+    check: '새 규칙 추가 때 기존 핵심 서비스를 수정하지 않아도 되는지 확인합니다.'
+  }
+};
+
+function renderDiagramPurpose(type) {
+  const root = document.getElementById('dg-purpose-cards');
+  if (!root) return;
+  const p = DG_PURPOSES[type] || DG_PURPOSES.usecase;
+  const cards = [
+    ['언제 쓰나', p.when],
+    ['왜 필요한가', p.why],
+    ['남기는 산출물', p.output],
+    ['검토 기준', p.check]
+  ];
+  root.innerHTML = cards.map(([label, text]) => `
+    <div class="dg-purpose-card">
+      <div class="dg-purpose-label">${label}</div>
+      <div class="dg-purpose-text">${text}</div>
+    </div>
+  `).join('');
+}
+
 function switchDiagram(type, el) {
   dgCurrentType = type;
   document.querySelectorAll('.dg-tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
+  renderDiagramPurpose(type);
 
   const tmpl = DG_TEMPLATES[type];
   if (!tmpl) return;

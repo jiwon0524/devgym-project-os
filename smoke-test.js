@@ -14,6 +14,7 @@ async function main() {
     if (message.type() === "error") errors.push(message.text());
   });
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("dialog", async (dialog) => dialog.accept());
 
   await page.goto(`file:///${filePath}`, { waitUntil: "load" });
   await page.evaluate(() => localStorage.clear());
@@ -43,6 +44,8 @@ async function main() {
     githubIssueCreateButtonVisible: false,
     academicDemoLoaded: false,
     academicDiagramTemplatesReady: false,
+    diagramPurposeCardsVisible: false,
+    templateButtonHidden: false,
     demoLoaded: false,
     demoCounts: {},
     errors,
@@ -50,6 +53,7 @@ async function main() {
 
   const loadDemo = page.getByRole("button", { name: "Load Demo" });
   if ((await loadDemo.count()) !== 1) throw new Error("Load Demo button not found");
+  result.templateButtonHidden = await page.locator('button[onclick="openTemplateGallery()"]').evaluate((el) => getComputedStyle(el).display === "none");
   await loadDemo.click();
   result.demoLoaded = await page.locator("#nb-req").innerText() !== "0";
   result.demoCounts = {
@@ -101,7 +105,6 @@ async function main() {
   await page.locator("#r-title").fill("카카오 로그인");
   result.requirementLiveCoachVisible = await page.locator("#req-live-coach").isVisible();
 
-  page.on("dialog", async (dialog) => dialog.accept());
   await page.evaluate(() => loadAcademicToolDemo());
   result.academicDemoLoaded = await page.evaluate(() =>
     S.project.name === "대학교 학사 관리 도구" &&
@@ -122,6 +125,10 @@ async function main() {
     DG_TEMPLATES.component.templates[0].name === "학사 도구 Component" &&
     DG_TEMPLATES.solid.templates[0].name === "학사 도구 SOLID"
   );
+  await page.evaluate(() => closeModal("add-req"));
+  await page.locator('[data-p="diagrams"]').click();
+  await page.waitForTimeout(150);
+  result.diagramPurposeCardsVisible = await page.locator("#dg-purpose-cards .dg-purpose-card").count() === 4;
   await page.screenshot({ path: path.resolve(__dirname, "smoke-collaboration.png"), fullPage: false });
 
   await browser.close();
