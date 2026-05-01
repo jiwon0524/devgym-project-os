@@ -1834,6 +1834,7 @@ html,body{height:100%;overflow:hidden}
       <div class="form-group"><label class="form-label">Supabase URL</label><input class="form-input" id="ps-supabase-url" placeholder="https://your-project.supabase.co"></div>
       <div class="form-group"><label class="form-label">Supabase Publishable Key</label><input class="form-input" id="ps-supabase-key" placeholder="sb_publishable_... 또는 anon public key"></div>
       <div class="form-group"><label class="form-label">Kakao Message Function URL</label><input class="form-input" id="ps-kakao-function" placeholder="선택: Supabase Edge Function URL"></div>
+      <div class="form-group"><label class="form-label">GitHub API Function URL</label><input class="form-input" id="ps-github-function" placeholder="선택: Supabase Edge Function URL"></div>
       <div style="font-size:11.5px;color:var(--t3);line-height:1.6">서비스 role key나 카카오 admin key는 브라우저에 넣지 마세요. 카카오톡 메시지 발송은 서버 함수에서 처리해야 합니다.</div>
     </div>
     <div class="modal-footer"><button class="btn" onclick="closeModal('settings')">취소</button><button class="btn btn-primary" onclick="saveSettings()">저장</button></div>
@@ -2116,8 +2117,8 @@ function save() {
   queueCloudSave();
 }
 function loadConfig() {
-  try { return Object.assign({supabaseUrl:'', supabaseKey:'', kakaoFunctionUrl:''}, JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}')); }
-  catch(e) { return {supabaseUrl:'', supabaseKey:'', kakaoFunctionUrl:''}; }
+  try { return Object.assign({supabaseUrl:'', supabaseKey:'', kakaoFunctionUrl:'', githubFunctionUrl:''}, JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}')); }
+  catch(e) { return {supabaseUrl:'', supabaseKey:'', kakaoFunctionUrl:'', githubFunctionUrl:''}; }
 }
 function saveConfig() {
   try { localStorage.setItem(CONFIG_KEY, JSON.stringify(POS_CONFIG)); } catch(e) {}
@@ -2315,12 +2316,14 @@ function initSettings() {
   sv('ps-supabase-url', POS_CONFIG.supabaseUrl);
   sv('ps-supabase-key', POS_CONFIG.supabaseKey);
   sv('ps-kakao-function', POS_CONFIG.kakaoFunctionUrl);
+  sv('ps-github-function', POS_CONFIG.githubFunctionUrl);
 }
 function saveSettings() {
   S.project.name = v('ps-name'); S.project.status = v('ps-status');
   POS_CONFIG.supabaseUrl = v('ps-supabase-url').trim();
   POS_CONFIG.supabaseKey = v('ps-supabase-key').trim();
   POS_CONFIG.kakaoFunctionUrl = v('ps-kakao-function').trim();
+  POS_CONFIG.githubFunctionUrl = v('ps-github-function').trim();
   saveConfig();
   POS_SUPABASE = null;
   save(); closeModal('settings'); updateStatusUI(); renderDashboard(); updateAuthUI();
@@ -3372,11 +3375,32 @@ function parseGitHubRepoUrl(url) {
 }
 
 async function ghFetch(path) {
+  if (POS_CONFIG.githubFunctionUrl) {
+    const res = await fetch(POS_CONFIG.githubFunctionUrl, {
+      method: 'POST',
+      headers: {'content-type':'application/json'},
+      body: JSON.stringify({method:'GET', path})
+    });
+    if (!res.ok) throw new Error(`GitHub proxy ${res.status}: ${path}`);
+    return res.json();
+  }
   const res = await fetch(`https://api.github.com${path}`, {
     headers: {'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'}
   });
   if (!res.ok) throw new Error(`GitHub API ${res.status}: ${path}`);
   return res.json();
+}
+
+async function ghWrite(path, body) {
+  if (!POS_CONFIG.githubFunctionUrl) throw new Error('Settings에 GitHub API Function URL이 필요합니다.');
+  const res = await fetch(POS_CONFIG.githubFunctionUrl, {
+    method: 'POST',
+    headers: {'content-type':'application/json'},
+    body: JSON.stringify({method:'POST', path, body})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.error || `GitHub proxy ${res.status}`);
+  return data;
 }
 
 async function loadGitHubRepo() {
@@ -3431,6 +3455,62 @@ function copyIssueDraft() {
   navigator.clipboard?.writeText(issueDraftForTask(task)).then(()=>toast('✓ GitHub Issue 초안 복사됨','ok'));
 }
 
+async function createGitHubIssueFromTask() {
+  const task = S.tasks.find(t=>t.id===v('gh-task'));
+  if (!task) { toast('Issue를 만들 Task를 선택하세요', 'err'); return; }
+  if (!S.github.owner || !S.github.repo) { toast('먼저 GitHub repo를 불러오세요', 'err'); return; }
+  try {
+    const issue = await ghWrite(`/repos/${S.github.owner}/${S.github.repo}/issues`, {
+      title: `[${task.id}] ${task.title}`,
+      body: issueDraftForTask(task),
+      labels: ['projectos']
+    });
+    S.github.issues.unshift({number:issue.number,title:issue.title,state:issue.state,url:issue.html_url,labels:['projectos'],updatedAt:issue.updated_at});
+    S.github.links.push({id:uid('gh'), taskId:task.id, kind:'issue', ref:String(issue.number), title:issue.title, url:issue.html_url, createdAt:today()});
+    logActivity('github_issue_created', `${task.id} → Issue #${issue.number}`, 'GitHub', String(issue.number));
+    save(); renderGitHub(); toast('✓ GitHub Issue 생성됨', 'ok');
+  } catch(e) { toast(e.message || 'GitHub Issue 생성 실패', 'err'); }
+}
+
+function syncTasksFromPulls() {
+  let changed = 0;
+  S.github.links.filter(l=>l.kind==='pull').forEach(link => {
+    const pr = S.github.pulls.find(p=>String(p.number)===String(link.ref));
+    const task = S.tasks.find(t=>t.id===link.taskId);
+    if (!pr || !task) return;
+    const nextStatus = pr.state === 'open' ? 'Review' : 'Done';
+    if (task.status !== nextStatus) {
+      task.status = nextStatus;
+      if (nextStatus === 'Done') task.progress = 100;
+      changed++;
+    }
+  });
+  if (changed) {
+    logActivity('github_pr_sync', `${changed}개 Task 상태를 PR 상태로 업데이트했습니다.`, 'GitHub', S.github.repo);
+    save(); renderGitHub(); renderTasks(); updateBadges(); renderDashboard();
+  }
+  toast(changed ? `✓ ${changed}개 Task 동기화` : '동기화할 PR 연결이 없습니다', changed ? 'ok' : 'info');
+}
+
+function autoLinkCommits() {
+  const re = /(TASK-\d{3,})/i;
+  let added = 0;
+  S.github.commits.forEach(c => {
+    const m = c.message.match(re);
+    if (!m) return;
+    const taskId = m[1].toUpperCase();
+    if (!S.tasks.some(t=>t.id===taskId)) return;
+    if (S.github.links.some(l=>l.kind==='commit' && l.ref===c.sha && l.taskId===taskId)) return;
+    S.github.links.push({id:uid('gh'), taskId, kind:'commit', ref:c.sha, title:c.message, url:c.url, createdAt:today()});
+    added++;
+  });
+  if (added) {
+    logActivity('github_commit_autolink', `${added}개 Commit을 Task ID로 자동 연결했습니다.`, 'GitHub', S.github.repo);
+    save(); renderGitHub();
+  }
+  toast(added ? `✓ ${added}개 Commit 자동 연결` : '자동 연결할 Commit이 없습니다', added ? 'ok' : 'info');
+}
+
 function updateGitHubRefOptions() {
   const kind = v('gh-kind') || 'issue';
   const ref = document.getElementById('gh-ref');
@@ -3461,6 +3541,7 @@ function renderGitHub() {
       </div>
       <button class="btn btn-primary" onclick="loadGitHubRepo()">Repo 불러오기</button>
       ${g.repository ? `<a class="btn" style="margin-left:8px;text-decoration:none" href="${esc(g.repository.html_url)}" target="_blank" rel="noreferrer">GitHub에서 열기</a>` : ''}
+      <div style="font-size:11.5px;color:var(--t3);line-height:1.6;margin-top:10px">${POS_CONFIG.githubFunctionUrl ? 'GitHub API Function URL이 설정되어 private repo/쓰기 기능을 사용할 수 있습니다.' : 'Function URL이 없으면 public repo 읽기만 가능합니다. Private repo와 Issue 생성은 Settings에서 GitHub API Function URL을 연결하세요.'}</div>
     </div>
     <div class="collab-stack" style="margin-top:14px">
       <div class="collab-metric"><div class="collab-metric-num">${g.issues.length}</div><div class="collab-metric-label">Open Issues</div></div>
@@ -3476,7 +3557,7 @@ function renderGitHub() {
           <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="gh-kind" onchange="updateGitHubRefOptions()"><option value="issue">Issue</option><option value="pull">Pull Request</option><option value="commit">Commit</option></select></div>
         </div>
         <div class="form-group"><label class="form-label">GitHub 항목</label><select class="form-select" id="gh-ref">${issueOptions || pullOptions || commitOptions}</select></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="linkTaskToGitHub()">연결</button><button class="btn" onclick="copyIssueDraft()">선택 Task로 Issue 초안 복사</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="linkTaskToGitHub()">연결</button><button class="btn" onclick="copyIssueDraft()">Issue 초안 복사</button><button class="btn" onclick="createGitHubIssueFromTask()">Issue 생성</button><button class="btn" onclick="syncTasksFromPulls()">PR 상태 동기화</button><button class="btn" onclick="autoLinkCommits()">Commit 자동 연결</button></div>
         <div class="collab-list">${g.links.slice(-8).reverse().map(l=>`<div class="collab-row"><div class="collab-step">GH</div><div><div class="collab-row-title">${esc(l.taskId)} ↔ ${esc(l.kind)} ${esc(l.ref)}</div><div class="collab-row-body">${esc(l.title)}</div></div><a class="collab-pill ready" href="${esc(l.url)}" target="_blank" rel="noreferrer">Open</a></div>`).join('') || '<div class="thread-msg"><div class="thread-text">아직 연결된 GitHub 항목이 없습니다.</div></div>'}</div>
       </div>
       <div class="collab-card">

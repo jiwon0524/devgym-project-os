@@ -92,3 +92,35 @@ Message sending remains queued until:
 - `Kakao Message Function URL` is set in ProjectOS Settings
 
 The browser calls the Edge Function with the signed-in user's Kakao provider access token. Do not expose Kakao admin keys or Supabase service role keys in `index.html`.
+
+## 6. GitHub private repo/write access
+
+ProjectOS can read public GitHub repositories directly from the browser. For private repositories or write actions such as creating issues, use the Edge Function:
+
+```text
+supabase/functions/github-proxy/index.ts
+```
+
+Recommended production setup:
+- Create a GitHub App with repository-scoped permissions.
+- Use short-lived GitHub App installation tokens in the server function.
+- Do not store GitHub tokens in `localStorage`.
+- Set the deployed function URL in ProjectOS Settings as `GitHub API Function URL`.
+
+MVP/testing setup:
+- Create a fine-grained GitHub token with the minimum required repository permissions.
+- Store it as a Supabase secret named `GITHUB_TOKEN`.
+- Deploy `github-proxy`.
+
+Supported proxy operations:
+- Read repository metadata
+- Read issues
+- Read pull requests
+- Read commits
+- Create issues
+
+ProjectOS client features:
+- Load private/public repo through the proxy
+- Create GitHub Issues from ProjectOS Tasks
+- Sync linked PR state back to Task status
+- Auto-link commits whose first line contains a Task ID such as `TASK-001`

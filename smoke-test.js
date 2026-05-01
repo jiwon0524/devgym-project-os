@@ -38,6 +38,7 @@ async function main() {
     coachVisibleAfterClick: false,
     requirementLiveCoachVisible: false,
     githubVisibleAfterClick: false,
+    githubIssueCreateButtonVisible: false,
     demoLoaded: false,
     demoCounts: {},
     errors,
@@ -88,6 +89,7 @@ async function main() {
   result.coachVisibleAfterClick = await page.locator("#page-coach").isVisible();
   await page.locator('[data-p="github"]').click();
   result.githubVisibleAfterClick = await page.locator("#page-github").isVisible();
+  result.githubIssueCreateButtonVisible = await page.locator('button[onclick="createGitHubIssueFromTask()"]').isVisible();
   await page.locator('[data-p="requirements"]').click();
   await page.getByRole("button", { name: "+ Add" }).click();
   await page.locator("#r-title").fill("카카오 로그인");
