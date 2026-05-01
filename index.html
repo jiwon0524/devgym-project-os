@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ProjectOS — DevGym Lab</title>
+<title>ProjectOS</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬡</text></svg>">
 <style>
 /* ============================================================
@@ -3534,7 +3534,7 @@ function renderGitHub() {
   root.innerHTML = `
     <div class="collab-card">
       <div class="collab-title">Repository Connection</div>
-      <div class="collab-copy">Public repo는 인증 없이 읽을 수 있습니다. Private repo, Issue 생성, PR 생성은 GitHub App/OAuth 권한을 나중에 붙여야 합니다.</div>
+      <div class="collab-copy">Public repo는 바로 읽을 수 있습니다. Private repo와 Issue 생성은 Settings의 GitHub API Function URL을 연결하면 사용할 수 있습니다.</div>
       <div class="form-row" style="margin-top:10px">
         <div class="form-group"><label class="form-label">GitHub Repository URL</label><input class="form-input" id="gh-repo-url" value="${esc(g.repoUrl)}" placeholder="https://github.com/owner/repo"></div>
         <div class="form-group"><label class="form-label">Default Branch</label><input class="form-input" value="${esc(g.branch || '-')}" readonly></div>
@@ -3646,6 +3646,58 @@ function copyTemplate(type) {
   navigator.clipboard?.writeText(templateText(type)).then(()=>toast('✓ PM 템플릿 복사됨','ok'));
 }
 
+function coachFindings(scored) {
+  const findings = [];
+  const weakReqs = scored.filter(x=>x.q.score<70);
+  const unlinkedReqs = S.requirements.filter(r=>!S.tasks.some(t=>t.reqId===r.id) || !S.testCases.some(t=>t.reqId===r.id));
+  const ownerlessTasks = S.tasks.filter(t=>!t.owner || t.owner === '-');
+  const failTcs = S.testCases.filter(t=>t.status==='Fail');
+  const openHighRisks = S.risks.filter(r=>r.status==='Open' && r.impact==='High');
+  const unlinkedGhTasks = S.tasks.filter(t=>!S.github.links.some(l=>l.taskId===t.id)).slice(0,8);
+  if (weakReqs.length) findings.push({level:'Fix', area:'Requirements', title:`요구사항 ${weakReqs.length}개 품질 보완`, body:'명확성, 테스트 가능성, 수용 기준, 담당자, Task/TC 연결을 먼저 채우세요.', target:'coach'});
+  if (unlinkedReqs.length) findings.push({level:'Review', area:'Traceability', title:`추적 연결이 약한 요구사항 ${unlinkedReqs.length}개`, body:'요구사항마다 최소 1개 Task와 1개 Test Case가 있어야 QA와 개발 영향 추적이 가능합니다.', target:'export'});
+  if (ownerlessTasks.length) findings.push({level:'Review', area:'WBS', title:`담당자 없는 Task ${ownerlessTasks.length}개`, body:'협업에서는 “누가 다음 행동을 하는지”가 빠지면 일정 리스크가 됩니다.', target:'tasks'});
+  if (failTcs.length) findings.push({level:'Fix', area:'QA', title:`Fail Test Case ${failTcs.length}개`, body:'릴리즈 전 Fail TC를 결함 또는 재검증 작업으로 연결하세요.', target:'testcases'});
+  if (openHighRisks.length) findings.push({level:'Fix', area:'Risk', title:`High Open Risk ${openHighRisks.length}개`, body:'High 리스크는 완화 계획, 담당자, 재검토 날짜를 명확히 둬야 합니다.', target:'risk'});
+  if (S.github.repository && unlinkedGhTasks.length) findings.push({level:'Review', area:'GitHub', title:`GitHub 근거 없는 Task ${unlinkedGhTasks.length}개`, body:'Issue, PR, Commit 중 하나라도 Task와 연결하면 구현 근거가 남습니다.', target:'github'});
+  if (!findings.length) findings.push({level:'Good', area:'PM', title:'핵심 협업 품질이 안정적입니다', body:'다음 단계는 사용자 공지와 릴리즈 승인 흐름을 정리하는 것입니다.', target:'coach'});
+  return findings;
+}
+
+function releaseReadiness(scored) {
+  const highReqs = S.requirements.filter(r=>r.priority==='High');
+  const highReqsWithTc = highReqs.filter(r=>S.testCases.some(t=>t.reqId===r.id));
+  const doneTasks = S.tasks.filter(t=>t.status==='Done');
+  const linkedDoneTasks = doneTasks.filter(t=>S.github.links.some(l=>l.taskId===t.id));
+  const checks = [
+    {label:'High 요구사항 테스트 연결', ok: highReqs.length===0 || highReqsWithTc.length===highReqs.length, detail:`${highReqsWithTc.length}/${highReqs.length}`},
+    {label:'Fail TC 없음', ok: !S.testCases.some(t=>t.status==='Fail'), detail:`${S.testCases.filter(t=>t.status==='Fail').length} fail`},
+    {label:'High Open Risk 없음', ok: !S.risks.some(r=>r.status==='Open' && r.impact==='High'), detail:`${S.risks.filter(r=>r.status==='Open' && r.impact==='High').length} high`},
+    {label:'요구사항 평균 품질 75점 이상', ok: !scored.length || Math.round(scored.reduce((a,x)=>a+x.q.score,0)/scored.length)>=75, detail: scored.length ? `${Math.round(scored.reduce((a,x)=>a+x.q.score,0)/scored.length)}점` : '0점'},
+    {label:'Done Task GitHub 근거', ok: doneTasks.length===0 || linkedDoneTasks.length===doneTasks.length, detail:`${linkedDoneTasks.length}/${doneTasks.length}`}
+  ];
+  const score = Math.round(checks.filter(c=>c.ok).length / checks.length * 100);
+  return {score, checks};
+}
+
+function queueCoachAction() {
+  const scored = S.requirements.map(r=>({r, q:requirementQuality(r)}));
+  const findings = coachFindings(scored).filter(f=>f.level!=='Good');
+  if (!findings.length) { toast('추가로 만들 코치 알림이 없습니다', 'info'); return; }
+  findings.slice(0,5).forEach(f => {
+    S.collaboration.notifications.push({
+      id: uid('noti'),
+      type: 'pm_coach_action',
+      channel: 'app',
+      status: 'queued',
+      body: `[${f.area}] ${f.title} - ${f.body}`,
+      createdAt: today()
+    });
+  });
+  logActivity('pm_coach_action_queued', `${Math.min(findings.length,5)}개 PM 코치 액션을 알림 큐에 추가했습니다.`, 'Quality Coach', 'PM');
+  save(); renderCoach(); updateBadges(); toast('✓ PM 코치 액션이 알림 큐에 추가됨', 'ok');
+}
+
 function renderCoach() {
   const root = document.getElementById('coach-root');
   if (!root) return;
@@ -3655,12 +3707,31 @@ function renderCoach() {
   const changed = S.requirements.slice(0,8).map(r=>({r, impact:impactForRequirement(r.id)}));
   const failTcs = S.testCases.filter(t=>t.status==='Fail').length;
   const openRisks = S.risks.filter(r=>r.status==='Open').length;
+  const findings = coachFindings(scored);
+  const readiness = releaseReadiness(scored);
   root.innerHTML = `
     <div class="collab-stack">
       <div class="collab-metric"><div class="collab-metric-num">${avg}</div><div class="collab-metric-label">Avg Req Quality</div></div>
       <div class="collab-metric"><div class="collab-metric-num">${weak.length}</div><div class="collab-metric-label">Needs Coaching</div></div>
       <div class="collab-metric"><div class="collab-metric-num">${failTcs}</div><div class="collab-metric-label">Fail TC</div></div>
       <div class="collab-metric"><div class="collab-metric-num">${openRisks}</div><div class="collab-metric-label">Open Risk</div></div>
+    </div>
+    <div class="collab-grid" style="margin-top:14px">
+      <div class="collab-card">
+        <div class="collab-title">Developer PM Review Board</div>
+        <div class="collab-copy">팀장 관점에서 지금 막히기 쉬운 협업/품질 이슈를 다음 행동으로 정리합니다.</div>
+        <div class="collab-list" style="margin-top:10px">
+          ${findings.map(f=>`<div class="collab-row"><div class="collab-step">${esc(f.level)}</div><div><div class="collab-row-title">${esc(f.title)}</div><div class="collab-row-body">${esc(f.body)}</div></div><button class="btn btn-sm" onclick="nav('${f.target}')">${esc(f.area)}</button></div>`).join('')}
+        </div>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="queueCoachAction()">협업 알림으로 보내기</button>
+      </div>
+      <div class="collab-card">
+        <div class="collab-title">Release Readiness</div>
+        <div class="collab-metric" style="margin:8px 0 12px"><div class="collab-metric-num">${readiness.score}%</div><div class="collab-metric-label">Release Confidence</div></div>
+        <div class="collab-list">
+          ${readiness.checks.map(c=>`<div class="thread-msg"><div class="thread-meta"><span>${c.ok?'PASS':'CHECK'}</span><span>${esc(c.detail)}</span></div><div class="thread-text">${esc(c.label)}</div></div>`).join('')}
+        </div>
+      </div>
     </div>
     <div class="collab-grid" style="margin-top:14px">
       <div class="collab-card">
@@ -4597,8 +4668,8 @@ RISK-002: 서드파티 API 서비스 중단
     title: 'GitHub 연동 사용법',
     sections: [
       { title: '무엇을 연결하나요?', body: 'GitHub repo의 Issues, Pull Requests, Commits를 ProjectOS Task와 연결해 구현 근거와 개발 진행 상황을 추적합니다.' },
-      { title: '현재 지원 범위', items: ['Public repository 읽기', 'Open Issues 조회', 'Open Pull Requests 조회', '최근 Commits 조회', 'Task와 GitHub 항목 연결', 'Task 기반 Issue 초안 복사'] },
-      { title: '나중에 붙일 범위', items: ['GitHub App/OAuth 로그인', 'Private repo 접근', 'ProjectOS Task에서 GitHub Issue 생성', 'PR 상태로 Task 자동 업데이트', 'Commit 메시지에서 Task ID 자동 연결'] },
+      { title: '현재 지원 범위', items: ['Public repository 읽기', 'Private repository 서버 프록시 읽기', 'Open Issues 조회', 'Open Pull Requests 조회', '최근 Commits 조회', 'Task와 GitHub 항목 연결', 'Task 기반 Issue 초안 복사', 'ProjectOS Task에서 GitHub Issue 생성', 'PR 상태로 Task 자동 업데이트', 'Commit 메시지에서 Task ID 자동 연결'] },
+      { title: '다음 확장 범위', items: ['팀별 GitHub App 설치 흐름', '사용자별 GitHub OAuth 연결', 'Webhook으로 PR/Commit 실시간 반영', 'Issue label/milestone 양방향 동기화'] },
       { title: '주의', tip: 'GitHub token은 브라우저 localStorage에 저장하지 않는 구조가 안전합니다. 실제 쓰기 기능은 서버/OAuth 기반으로 붙이는 것이 좋습니다.' }
     ]
   },
