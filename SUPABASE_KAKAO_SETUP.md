@@ -85,4 +85,10 @@ Required function environment variables:
 - `KAKAO_REST_API_KEY`
 - `PROJECTOS_APP_URL`
 
-Message sending should remain queued until Kakao permissions are approved.
+Message sending remains queued until:
+- Supabase Kakao login is configured
+- Kakao `talk_message` consent is approved
+- Receiver UUIDs are obtained through Kakao Friends picker or friends list API
+- `Kakao Message Function URL` is set in ProjectOS Settings
+
+The browser calls the Edge Function with the signed-in user's Kakao provider access token. Do not expose Kakao admin keys or Supabase service role keys in `index.html`.

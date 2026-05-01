@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
 
   const templateObject = {
     object_type: "text",
-    text: `${body.workspaceName || "ProjectOS"} 협업 워크스페이스에 초대되었습니다.`,
+    text: `[ProjectOS] ${body.workspaceName || "협업 워크스페이스"}에 초대되었습니다.\n초대 링크로 들어와 카카오 로그인 후 참여하세요.`,
     link: {
       web_url: body.inviteUrl,
       mobile_web_url: body.inviteUrl,

@@ -33,6 +33,8 @@ async function main() {
     collaborationDecisionAdded: false,
     collaborationJoinQueued: false,
     loginMenuOpens: false,
+    logoutHiddenWhenLoggedOut: false,
+    kakaoSendButtonVisible: false,
     demoLoaded: false,
     demoCounts: {},
     errors,
@@ -64,7 +66,9 @@ async function main() {
   result.collaborationVisibleAfterClick = await page.locator("#page-collaboration").isVisible();
   await page.locator("#auth-status-btn").click();
   result.loginMenuOpens = await page.locator("#login-menu").isVisible();
+  result.logoutHiddenWhenLoggedOut = !(await page.locator("#logout-action-btn").isVisible());
   result.collaborationJoinQueued = await page.locator("#collab-join-code").isVisible();
+  result.kakaoSendButtonVisible = await page.locator('button[onclick="sendKakaoInvite()"]').isVisible();
   await page.locator("#collab-member-name").fill("테스트 멤버");
   await page.locator("#collab-member-role").selectOption("Manager");
   await page.locator('button[onclick="addCollabMember()"]').click();

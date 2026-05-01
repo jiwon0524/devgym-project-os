@@ -882,8 +882,8 @@ html,body{height:100%;overflow:hidden}
   <div class="login-menu-title" id="login-menu-title">Kakao Login</div>
   <div class="login-menu-body" id="login-menu-body">카카오 로그인은 사용자 신원 확인용입니다. 협업 참여는 Collaboration의 초대 코드/링크로 진행합니다.</div>
   <div class="login-menu-actions">
-    <button class="btn btn-sm btn-primary" onclick="signInWithKakao()">카카오 로그인</button>
-    <button class="btn btn-sm" onclick="signOutCollab()">로그아웃</button>
+    <button class="btn btn-sm btn-primary" id="login-action-btn" onclick="signInWithKakao()">카카오 로그인</button>
+    <button class="btn btn-sm" id="logout-action-btn" onclick="signOutCollab()" style="display:none">로그아웃</button>
     <button class="btn btn-sm" onclick="nav('collaboration');closeLoginMenu()">협업 설정</button>
   </div>
 </div>
@@ -3013,6 +3013,7 @@ function renderCollaboration() {
           <button class="btn" onclick="joinWorkspaceByCode()">코드로 참여</button>
           <button class="btn" onclick="copyInviteLink()">초대 링크 복사</button>
           <button class="btn" onclick="queueKakaoInvite()">카카오톡 초대 준비</button>
+          <button class="btn btn-primary" onclick="sendKakaoInvite()">카카오톡 초대 발송</button>
         </div>
       </div>
     </div>
@@ -3144,6 +3145,34 @@ function queueKakaoInvite() {
   logActivity('kakao_invite_queued', `카카오톡 초대 메시지 발송 준비 큐가 생성되었습니다. ${target}`, 'Workspace', S.collaboration.workspaceId);
   save(); renderCollaboration(); toast('카카오톡 초대는 서버 함수/심사 준비 후 발송됩니다', 'info');
 }
+async function sendKakaoInvite() {
+  ensureWorkspace();
+  const receiverUuid = v('collab-kakao-uuid').trim();
+  if (!receiverUuid) { toast('카카오톡 수신자 UUID를 입력하세요', 'err'); return; }
+  if (!POS_CONFIG.kakaoFunctionUrl) { queueKakaoInvite(); toast('Settings에 Kakao Message Function URL이 필요합니다', 'err'); return; }
+  if (!POS_SESSION?.provider_token) { toast('카카오 로그인 후 메시지를 보낼 수 있습니다', 'err'); return; }
+  const inviteUrl = `${location.origin}${location.pathname}?invite=${encodeURIComponent(S.collaboration.inviteCode)}`;
+  try {
+    const res = await fetch(POS_CONFIG.kakaoFunctionUrl, {
+      method: 'POST',
+      headers: {'content-type':'application/json'},
+      body: JSON.stringify({
+        accessToken: POS_SESSION.provider_token,
+        receiverUuids: receiverUuid.split(',').map(x => x.trim()).filter(Boolean).slice(0, 5),
+        workspaceName: S.collaboration.workspaceName,
+        inviteUrl
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || data.message || 'Kakao invite failed');
+    S.collaboration.notifications.push({id: uid('noti'), type:'kakao_invite', channel:'kakao', status:'sent', body:`카카오톡 초대 발송 완료: ${receiverUuid}`, createdAt:today()});
+    logActivity('kakao_invite_sent', `카카오톡 초대 발송 완료: ${receiverUuid}`, 'Workspace', S.collaboration.workspaceId);
+    save(); renderCollaboration(); toast('✓ 카카오톡 초대 발송 완료', 'ok');
+  } catch(e) {
+    S.collaboration.notifications.push({id: uid('noti'), type:'kakao_invite', channel:'kakao', status:'failed', body:`카카오톡 초대 실패: ${e.message}`, createdAt:today()});
+    save(); renderCollaboration(); toast(e.message || '카카오톡 초대 발송 실패', 'err');
+  }
+}
 function queueCloudSave() {
   if (!POS_CONFIG.supabaseUrl || !POS_CONFIG.supabaseKey || !POS_SESSION?.user) return;
   clearTimeout(POS_SYNC_TIMER);
@@ -3242,17 +3271,23 @@ function updateAuthUI() {
   const btn = document.getElementById('auth-status-btn');
   const title = document.getElementById('login-menu-title');
   const body = document.getElementById('login-menu-body');
+  const loginAction = document.getElementById('login-action-btn');
+  const logoutAction = document.getElementById('logout-action-btn');
   if (!btn) return;
   if (POS_SESSION?.user) {
     btn.textContent = 'Kakao On';
     btn.classList.add('btn-primary');
     if (title) title.textContent = currentUserLabel();
     if (body) body.textContent = `로그인됨 · 개인 코드 ${S.collaboration?.personalCode || ''}. 협업 참여는 초대 코드/링크로 진행합니다.`;
+    if (loginAction) loginAction.style.display = 'none';
+    if (logoutAction) logoutAction.style.display = '';
   } else {
     btn.textContent = POS_CONFIG.supabaseUrl ? 'Login' : 'Login';
     btn.classList.remove('btn-primary');
     if (title) title.textContent = 'Kakao Login';
     if (body) body.textContent = POS_CONFIG.supabaseUrl ? '카카오 로그인을 사용할 준비가 됐습니다. 협업 참여는 Collaboration의 초대 코드/링크로 진행합니다.' : 'Settings에서 Supabase URL과 key를 입력하면 카카오 로그인을 사용할 수 있습니다.';
+    if (loginAction) loginAction.style.display = '';
+    if (logoutAction) logoutAction.style.display = 'none';
   }
 }
 
