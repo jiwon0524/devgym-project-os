@@ -3258,7 +3258,13 @@ async function getSupabaseClient() {
 async function signInWithKakao() {
   try {
     const client = await getSupabaseClient();
-    await client.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.href.split('#')[0] } });
+    await client.auth.signInWithOAuth({
+      provider: 'kakao',
+      options: {
+        redirectTo: location.href.split('#')[0],
+        scopes: 'profile_nickname profile_image'
+      }
+    });
   } catch(e) { toast(e.message || '카카오 로그인 준비 실패', 'err'); }
 }
 async function signOutCollab() {
