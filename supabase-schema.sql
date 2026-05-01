@@ -12,6 +12,12 @@ create table if not exists public.workspaces (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.user_invite_codes (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  personal_code text unique not null default ('U-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6))),
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.workspace_members (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -75,6 +81,7 @@ create table if not exists public.activity_log (
 );
 
 alter table public.workspaces enable row level security;
+alter table public.user_invite_codes enable row level security;
 alter table public.workspace_members enable row level security;
 alter table public.project_snapshots enable row level security;
 alter table public.comments enable row level security;
@@ -97,6 +104,13 @@ as $$
       and wm.status = 'Active'
   );
 $$;
+
+drop policy if exists "users manage own invite code" on public.user_invite_codes;
+create policy "users manage own invite code"
+on public.user_invite_codes
+for all
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
 
 drop policy if exists "workspace owner can manage" on public.workspaces;
 create policy "workspace owner can manage"

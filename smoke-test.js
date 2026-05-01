@@ -31,6 +31,7 @@ async function main() {
     collaborationMemberAdded: false,
     collaborationCommentAdded: false,
     collaborationDecisionAdded: false,
+    collaborationJoinQueued: false,
     demoLoaded: false,
     demoCounts: {},
     errors,
@@ -60,6 +61,7 @@ async function main() {
 
   await page.locator('[data-p="collaboration"]').click();
   result.collaborationVisibleAfterClick = await page.locator("#page-collaboration").isVisible();
+  result.collaborationJoinQueued = await page.locator("#collab-join-code").isVisible();
   await page.locator("#collab-member-name").fill("테스트 멤버");
   await page.locator("#collab-member-role").selectOption("Manager");
   await page.locator('button[onclick="addCollabMember()"]').click();

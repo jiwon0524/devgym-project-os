@@ -50,10 +50,18 @@ supabase.auth.signInWithOAuth({
 
 Once Supabase is configured, the **Collaboration** page can:
 - sign in with Kakao
+- keep Kakao login separate from workspace membership
+- join a workspace only through an invite code/link or a queued KakaoTalk invite
 - upload the current ProjectOS snapshot to Supabase
 - load the snapshot from Supabase
 - keep decision logs and activity timeline data inside the project snapshot
 - keep local fallback behavior when Supabase is not configured
+
+Recommended product rule:
+- Kakao Login identifies the person.
+- Workspace invite code/link grants project access.
+- KakaoTalk is only a delivery channel for the invite link/message.
+- A user should not join a project automatically just because they logged in with Kakao.
 
 ## 4. Collaboration model
 

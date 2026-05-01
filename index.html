@@ -1999,6 +1999,7 @@ function defaultState() {
       workspaceId: '',
       workspaceName: 'DevGym Workspace',
       inviteCode: '',
+      personalCode: '',
       members: [],
       comments: [],
       messages: [],
@@ -2914,6 +2915,7 @@ function ensureWorkspace() {
   const c = S.collaboration;
   if (!c.workspaceId) c.workspaceId = uid('ws');
   if (!c.inviteCode) c.inviteCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+  if (!c.personalCode) c.personalCode = 'U-' + Math.random().toString(36).slice(2, 8).toUpperCase();
   if (!c.members.length) c.members.push({id: uid('mem'), name: currentUserLabel(), role: 'Owner', status: 'Active', joinedAt: today()});
 }
 
@@ -2966,31 +2968,38 @@ function renderCollaboration() {
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start">
       <div>
-        <div class="collab-title">Live Collaboration Console</div>
-        <div class="collab-copy">저장 모드: <b>${configured ? 'Supabase 준비됨' : 'Local fallback'}</b> · 로그인: <b>${connected ? esc(currentUserLabel()) : '미연결'}</b></div>
+        <div class="collab-title">Kakao Login / Identity</div>
+        <div class="collab-copy">카카오 로그인은 내 신원 확인 전용입니다. 로그인만으로 팀에 자동 참여하지 않고, 워크스페이스 초대 코드나 링크가 있어야 협업에 연결됩니다.</div>
         <div class="collab-stack">
+          <div class="collab-metric"><div class="collab-metric-num">${connected ? 'On' : 'Off'}</div><div class="collab-metric-label">Kakao Login</div></div>
+          <div class="collab-metric"><div class="collab-metric-num">${configured ? 'On' : 'Off'}</div><div class="collab-metric-label">Backend</div></div>
+          <div class="collab-metric"><div class="collab-metric-num">${c.personalCode}</div><div class="collab-metric-label">My Code</div></div>
           <div class="collab-metric"><div class="collab-metric-num">${c.members.length}</div><div class="collab-metric-label">Members</div></div>
-          <div class="collab-metric"><div class="collab-metric-num">${c.comments.length}</div><div class="collab-metric-label">Comments</div></div>
-          <div class="collab-metric"><div class="collab-metric-num">${c.decisions.length}</div><div class="collab-metric-label">Decisions</div></div>
-          <div class="collab-metric"><div class="collab-metric-num">${tm.coverage}%</div><div class="collab-metric-label">Traceability</div></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
           <button class="btn btn-primary" onclick="signInWithKakao()">카카오 로그인</button>
           <button class="btn" onclick="signOutCollab()">로그아웃</button>
+          <button class="btn" onclick="copyPersonalCode()">내 코드 복사</button>
           <button class="btn" onclick="syncFromCloud()">Supabase에서 불러오기</button>
           <button class="btn" onclick="syncToCloudNow()">현재 데이터 업로드</button>
         </div>
       </div>
       <div>
-        <div class="collab-title">Workspace</div>
+        <div class="collab-title">Workspace Invite / Join</div>
+        <div class="collab-copy">협업 연결은 워크스페이스 초대 코드, 초대 링크, 또는 카카오톡 초대 메시지로 처리합니다.</div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">워크스페이스명</label><input class="form-input" id="collab-ws-name" value="${esc(c.workspaceName)}"></div>
           <div class="form-group"><label class="form-label">초대 코드</label><input class="form-input" id="collab-invite-code" value="${esc(c.inviteCode)}" readonly></div>
         </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">초대 코드로 참여</label><input class="form-input" id="collab-join-code" placeholder="예: ABCD1234"></div>
+          <div class="form-group"><label class="form-label">카카오톡 수신자 UUID</label><input class="form-input" id="collab-kakao-uuid" placeholder="심사 후 사용"></div>
+        </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="saveWorkspaceMeta()">워크스페이스 저장</button>
+          <button class="btn" onclick="joinWorkspaceByCode()">코드로 참여</button>
           <button class="btn" onclick="copyInviteLink()">초대 링크 복사</button>
-          <button class="btn" onclick="queueKakaoInvite()">카카오톡 초대 큐</button>
+          <button class="btn" onclick="queueKakaoInvite()">카카오톡 초대 준비</button>
         </div>
       </div>
     </div>
@@ -3053,10 +3062,28 @@ function saveWorkspaceMeta() {
   S.collaboration.workspaceName = v('collab-ws-name').trim() || 'DevGym Workspace';
   save(); renderCollaboration(); toast('✓ 워크스페이스 저장됨', 'ok');
 }
+function copyPersonalCode() {
+  ensureWorkspace();
+  navigator.clipboard?.writeText(S.collaboration.personalCode)
+    .then(() => toast('✓ 내 개인 코드 복사됨', 'ok'))
+    .catch(() => toast(S.collaboration.personalCode, 'info'));
+}
 function copyInviteLink() {
   ensureWorkspace();
   const url = `${location.origin}${location.pathname}?invite=${encodeURIComponent(S.collaboration.inviteCode)}`;
   navigator.clipboard?.writeText(url).then(() => toast('✓ 초대 링크 복사됨', 'ok')).catch(() => toast(url, 'info'));
+}
+function joinWorkspaceByCode() {
+  ensureWorkspace();
+  const code = v('collab-join-code').trim().toUpperCase();
+  if (!code) { toast('초대 코드를 입력하세요', 'err'); return; }
+  if (code === S.collaboration.inviteCode) {
+    toast('이미 이 워크스페이스에 연결되어 있습니다', 'info');
+    return;
+  }
+  S.collaboration.notifications.push({id: uid('noti'), type:'join_requested', channel:'app', status:'queued', body:`초대 코드 ${code}로 워크스페이스 참여 요청을 만들었습니다.`, createdAt:today()});
+  logActivity('join_requested', `초대 코드 ${code}로 참여 요청`, 'Workspace', code);
+  save(); renderCollaboration(); toast('✓ 참여 요청이 생성되었습니다', 'ok');
 }
 function addCollabMember() {
   ensureWorkspace();
@@ -3097,8 +3124,11 @@ function addDecision() {
 }
 function queueKakaoInvite() {
   ensureWorkspace();
-  S.collaboration.notifications.push({id: uid('noti'), type:'kakao_invite', channel:'kakao', status:'needs_server', body:`${S.collaboration.workspaceName} 초대 메시지 발송 준비. 카카오 메시지 API 권한과 서버 함수가 필요합니다.`, createdAt:today()});
-  logActivity('kakao_invite_queued', '카카오톡 초대 메시지 발송 준비 큐가 생성되었습니다.', 'Workspace', S.collaboration.workspaceId);
+  const receiverUuid = v('collab-kakao-uuid').trim();
+  const inviteUrl = `${location.origin}${location.pathname}?invite=${encodeURIComponent(S.collaboration.inviteCode)}`;
+  const target = receiverUuid ? `수신자 UUID ${receiverUuid}` : '수신자 미지정';
+  S.collaboration.notifications.push({id: uid('noti'), type:'kakao_invite', channel:'kakao', status:'needs_server', body:`${S.collaboration.workspaceName} 초대 메시지 발송 준비. ${target}. 초대 링크: ${inviteUrl}`, createdAt:today()});
+  logActivity('kakao_invite_queued', `카카오톡 초대 메시지 발송 준비 큐가 생성되었습니다. ${target}`, 'Workspace', S.collaboration.workspaceId);
   save(); renderCollaboration(); toast('카카오톡 초대는 서버 함수/심사 준비 후 발송됩니다', 'info');
 }
 function queueCloudSave() {
