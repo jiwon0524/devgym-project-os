@@ -53,7 +53,7 @@ async function main() {
 
   const loadDemo = page.getByRole("button", { name: "Load Demo" });
   if ((await loadDemo.count()) !== 1) throw new Error("Load Demo button not found");
-  result.templateButtonHidden = await page.locator('button[onclick="openTemplateGallery()"]').evaluate((el) => getComputedStyle(el).display === "none");
+  result.templateButtonHidden = (await page.locator('button[onclick="openTemplateGallery()"]').count()) === 0;
   await loadDemo.click();
   result.demoLoaded = await page.locator("#nb-req").innerText() !== "0";
   result.demoCounts = {
