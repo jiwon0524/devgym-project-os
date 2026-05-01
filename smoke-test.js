@@ -41,6 +41,8 @@ async function main() {
     requirementLiveCoachVisible: false,
     githubVisibleAfterClick: false,
     githubIssueCreateButtonVisible: false,
+    academicDemoLoaded: false,
+    academicDiagramTemplatesReady: false,
     demoLoaded: false,
     demoCounts: {},
     errors,
@@ -98,6 +100,28 @@ async function main() {
   await page.getByRole("button", { name: "+ Add" }).click();
   await page.locator("#r-title").fill("카카오 로그인");
   result.requirementLiveCoachVisible = await page.locator("#req-live-coach").isVisible();
+
+  page.on("dialog", async (dialog) => dialog.accept());
+  await page.evaluate(() => loadAcademicToolDemo());
+  result.academicDemoLoaded = await page.evaluate(() =>
+    S.project.name === "대학교 학사 관리 도구" &&
+    S.requirements.length === 8 &&
+    S.tasks.length === 8 &&
+    S.testCases.length === 5 &&
+    S.apis.length === 5 &&
+    S.risks.length === 3 &&
+    S.collaboration.members.length === 5 &&
+    S.github.links.length === 3
+  );
+  result.academicDiagramTemplatesReady = await page.evaluate(() =>
+    DG_TEMPLATES.usecase.templates[0].name === "학사 도구 Use Case" &&
+    DG_TEMPLATES.class.templates[0].name === "학사 도구 Class" &&
+    DG_TEMPLATES.sequence.templates[0].name === "학사 도구 Sequence" &&
+    DG_TEMPLATES.erd.templates[0].name === "학사 도구 ERD" &&
+    DG_TEMPLATES.activity.templates[0].name === "학사 도구 Activity" &&
+    DG_TEMPLATES.component.templates[0].name === "학사 도구 Component" &&
+    DG_TEMPLATES.solid.templates[0].name === "학사 도구 SOLID"
+  );
   await page.screenshot({ path: path.resolve(__dirname, "smoke-collaboration.png"), fullPage: false });
 
   await browser.close();
