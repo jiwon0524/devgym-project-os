@@ -35,6 +35,8 @@ async function main() {
     loginMenuOpens: false,
     logoutHiddenWhenLoggedOut: false,
     kakaoSendButtonVisible: false,
+    coachVisibleAfterClick: false,
+    requirementLiveCoachVisible: false,
     demoLoaded: false,
     demoCounts: {},
     errors,
@@ -81,6 +83,12 @@ async function main() {
   await page.locator("#decision-body").fill("FR-003 PUT/DELETE는 다음 스프린트로 넘기고 GET/POST를 먼저 확정한다.");
   await page.locator('button[onclick="addDecision()"]').click();
   result.collaborationDecisionAdded = await page.getByText("PUT/DELETE").count() > 0;
+  await page.locator('[data-p="coach"]').click();
+  result.coachVisibleAfterClick = await page.locator("#page-coach").isVisible();
+  await page.locator('[data-p="requirements"]').click();
+  await page.getByRole("button", { name: "+ Add" }).click();
+  await page.locator("#r-title").fill("카카오 로그인");
+  result.requirementLiveCoachVisible = await page.locator("#req-live-coach").isVisible();
   await page.screenshot({ path: path.resolve(__dirname, "smoke-collaboration.png"), fullPage: false });
 
   await browser.close();
