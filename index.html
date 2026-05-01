@@ -2002,7 +2002,9 @@ function defaultState() {
       members: [],
       comments: [],
       messages: [],
-      notifications: []
+      notifications: [],
+      decisions: [],
+      activity: []
     },
     _seq: {FR:0, NFR:0, TASK:0, TC:0, API:0, RISK:0, MTG:0}
   };
@@ -2016,6 +2018,8 @@ function normalizeState(data) {
   next.collaboration.comments = next.collaboration.comments || [];
   next.collaboration.messages = next.collaboration.messages || [];
   next.collaboration.notifications = next.collaboration.notifications || [];
+  next.collaboration.decisions = next.collaboration.decisions || [];
+  next.collaboration.activity = next.collaboration.activity || [];
   next._seq = Object.assign(base._seq, (data && data._seq) || {});
   return next;
 }
@@ -2285,6 +2289,7 @@ function saveReq() {
     const id = nextId(type);
     S.requirements.push({id, type, title, desc:v('r-desc'), priority:v('r-priority'), status:v('r-status'), owner:v('r-owner'), createdAt:today(), updatedAt:today()});
   }
+  logActivity(editIds.req ? 'requirement_updated' : 'requirement_created', title, 'Requirement', editIds.req || S.requirements[S.requirements.length - 1]?.id || '');
   save(); closeModal('add-req'); renderReqs(); updateBadges(); renderDashboard();
   toast(editIds.req ? '✓ 요구사항 수정됨' : '✓ 요구사항 추가됨', 'ok');
 }
@@ -2395,6 +2400,7 @@ function saveTask() {
     const id = nextId('TASK');
     S.tasks.push({id, title, desc:v('t-desc'), phase:v('t-phase'), reqId:v('t-req'), owner:v('t-owner'), priority:v('t-priority'), status:v('t-status'), startDate:v('t-start'), endDate:v('t-end'), progress:prog, createdAt:today()});
   }
+  logActivity(editIds.task ? 'task_updated' : 'task_created', title, 'Task', editIds.task || S.tasks[S.tasks.length - 1]?.id || '');
   save(); closeModal('add-task'); renderTasks(); updateBadges(); renderDashboard();
   toast(editIds.task ? '✓ 작업 수정됨' : '✓ 작업 추가됨', 'ok');
 }
@@ -2406,7 +2412,7 @@ function delTask() {
 }
 function moveTask(id, status) {
   const t = S.tasks.find(x => x.id === id);
-  if (t) { t.status = status; if (status==='Done') t.progress = 100; save(); renderTasks(); renderDashboard(); }
+  if (t) { t.status = status; if (status==='Done') t.progress = 100; logActivity('task_moved', `${t.title} → ${status}`, 'Task', id); save(); renderTasks(); renderDashboard(); }
 }
 function renderTasks() {
   const of = v('tf-owner'), pf = v('tf-phase');
@@ -2508,6 +2514,7 @@ function saveTC() {
     const id = nextId('TC');
     S.testCases.push({id, title, reqId:v('tc-req'), precondition:v('tc-pre'), input:v('tc-input'), expected:v('tc-expected'), actual:v('tc-actual'), status:v('tc-status'), owner:v('tc-owner'), createdAt:today()});
   }
+  logActivity(editIds.tc ? 'testcase_updated' : 'testcase_created', title, 'Test Case', editIds.tc || S.testCases[S.testCases.length - 1]?.id || '');
   save(); closeModal('add-tc'); renderTCs(); updateBadges(); renderDashboard();
   toast(editIds.tc ? '✓ TC 수정됨' : '✓ TC 추가됨', 'ok');
 }
@@ -2518,7 +2525,7 @@ function delTC() {
 }
 function updateTCStatus(id, status) {
   const tc = S.testCases.find(x => x.id === id);
-  if (tc) { tc.status = status; save(); renderTCs(); renderDashboard(); }
+  if (tc) { tc.status = status; logActivity('testcase_status_changed', `${tc.title} → ${status}`, 'Test Case', id); save(); renderTCs(); renderDashboard(); }
 }
 function renderTCs() {
   const rf = v('tcf-req'), sf = v('tcf-status');
@@ -2664,6 +2671,7 @@ function saveAPI() {
     const id = nextId('API');
     S.apis.push({id, method:v('api-method'), endpoint, desc:v('api-desc'), reqId:v('api-req'), owner:v('api-owner'), status:v('api-status'), reqBody:v('api-req-body'), resBody:v('api-res-body'), errors:v('api-errors'), createdAt:today()});
   }
+  logActivity(editIds.api ? 'api_updated' : 'api_created', endpoint, 'API Spec', editIds.api || S.apis[S.apis.length - 1]?.id || '');
   save(); closeModal('add-api'); renderAPIs(); updateBadges(); renderDashboard();
   toast(editIds.api ? '✓ API 수정됨' : '✓ API 추가됨', 'ok');
 }
@@ -2731,6 +2739,7 @@ function saveRisk() {
     const id = nextId('RISK');
     S.risks.push({id, title, desc:v('risk-desc'), impact:v('risk-impact'), probability:v('risk-prob'), mitigation:v('risk-mitigation'), owner:v('risk-owner'), status:v('risk-status'), createdAt:today()});
   }
+  logActivity(editIds.risk ? 'risk_updated' : 'risk_created', title, 'Risk', editIds.risk || S.risks[S.risks.length - 1]?.id || '');
   save(); closeModal('add-risk'); renderRisks(); updateBadges();
   toast(editIds.risk ? '✓ 리스크 수정됨' : '✓ 리스크 추가됨', 'ok');
 }
@@ -2804,6 +2813,7 @@ function saveMeeting() {
     const id = nextId('MTG');
     S.meetings.push({id, title, date:v('mtg-date'), attendees:v('mtg-attendees'), agenda:v('mtg-agenda'), discussion:v('mtg-discussion'), decision:v('mtg-decision'), actions:v('mtg-actions'), nextMeeting:v('mtg-next'), createdAt:today()});
   }
+  logActivity(editIds.meeting ? 'meeting_updated' : 'meeting_created', title, 'Meeting', editIds.meeting || S.meetings[S.meetings.length - 1]?.id || '');
   save(); closeModal('add-meeting'); renderMeetings(); updateBadges();
   toast(editIds.meeting ? '✓ 회의록 수정됨' : '✓ 회의록 추가됨', 'ok');
 }
@@ -2907,6 +2917,40 @@ function ensureWorkspace() {
   if (!c.members.length) c.members.push({id: uid('mem'), name: currentUserLabel(), role: 'Owner', status: 'Active', joinedAt: today()});
 }
 
+function traceMetrics() {
+  const reqs = S.requirements.length;
+  const taskLinked = S.tasks.filter(t => t.reqId).length;
+  const tcLinked = S.testCases.filter(t => t.reqId).length;
+  const apiLinked = S.apis.filter(a => a.reqId).length;
+  const fullyCovered = S.requirements.filter(r =>
+    S.tasks.some(t => t.reqId === r.id) &&
+    S.testCases.some(t => t.reqId === r.id)
+  ).length;
+  return {
+    reqs,
+    taskLinked,
+    tcLinked,
+    apiLinked,
+    fullyCovered,
+    orphanTasks: S.tasks.filter(t => !t.reqId).length,
+    coverage: reqs ? Math.round((fullyCovered / reqs) * 100) : 0
+  };
+}
+
+function logActivity(type, body, targetType='Project', targetId='') {
+  ensureWorkspace();
+  S.collaboration.activity.push({
+    id: uid('act'),
+    type,
+    targetType,
+    targetId,
+    actor: currentUserLabel(),
+    body,
+    createdAt: today()
+  });
+  if (S.collaboration.activity.length > 80) S.collaboration.activity = S.collaboration.activity.slice(-80);
+}
+
 function renderCollaboration() {
   ensureWorkspace();
   const c = S.collaboration;
@@ -2916,6 +2960,9 @@ function renderCollaboration() {
   const configured = !!(POS_CONFIG.supabaseUrl && POS_CONFIG.supabaseKey);
   const comments = [...c.comments].slice(-5).reverse();
   const notifications = [...c.notifications].slice(-5).reverse();
+  const decisions = [...c.decisions].slice(-5).reverse();
+  const activity = [...c.activity].slice(-8).reverse();
+  const tm = traceMetrics();
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start">
       <div>
@@ -2924,8 +2971,8 @@ function renderCollaboration() {
         <div class="collab-stack">
           <div class="collab-metric"><div class="collab-metric-num">${c.members.length}</div><div class="collab-metric-label">Members</div></div>
           <div class="collab-metric"><div class="collab-metric-num">${c.comments.length}</div><div class="collab-metric-label">Comments</div></div>
-          <div class="collab-metric"><div class="collab-metric-num">${c.notifications.length}</div><div class="collab-metric-label">Notifications</div></div>
-          <div class="collab-metric"><div class="collab-metric-num">${configured ? 'On' : 'Off'}</div><div class="collab-metric-label">Backend</div></div>
+          <div class="collab-metric"><div class="collab-metric-num">${c.decisions.length}</div><div class="collab-metric-label">Decisions</div></div>
+          <div class="collab-metric"><div class="collab-metric-num">${tm.coverage}%</div><div class="collab-metric-label">Traceability</div></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
           <button class="btn btn-primary" onclick="signInWithKakao()">카카오 로그인</button>
@@ -2971,6 +3018,32 @@ function renderCollaboration() {
     <div style="margin-top:14px">
       <div class="collab-title">Notification Queue</div>
       <div class="thread-preview">${notifications.map(n => `<div class="thread-msg"><div class="thread-meta"><span>${esc(n.type)} · ${esc(n.channel)}</span><span>${esc(n.status)}</span></div><div class="thread-text">${esc(n.body)}</div></div>`).join('') || '<div class="thread-msg"><div class="thread-text">멘션이나 카카오 초대가 생기면 알림 큐에 쌓입니다.</div></div>'}</div>
+    </div>
+    <div class="collab-grid" style="margin-top:14px">
+      <div class="collab-card">
+        <div class="collab-title">Traceability Health</div>
+        <div class="collab-stack">
+          <div class="collab-metric"><div class="collab-metric-num">${tm.fullyCovered}/${tm.reqs}</div><div class="collab-metric-label">Req with Task+TC</div></div>
+          <div class="collab-metric"><div class="collab-metric-num">${tm.taskLinked}</div><div class="collab-metric-label">Linked Tasks</div></div>
+          <div class="collab-metric"><div class="collab-metric-num">${tm.tcLinked}</div><div class="collab-metric-label">Linked TCs</div></div>
+          <div class="collab-metric"><div class="collab-metric-num">${tm.orphanTasks}</div><div class="collab-metric-label">Orphan Tasks</div></div>
+        </div>
+        <div class="collab-copy" style="margin-top:10px">요구사항이 Task와 Test Case까지 연결되면 나중에 변경 영향과 검증 범위를 추적할 수 있습니다.</div>
+      </div>
+      <div class="collab-card">
+        <div class="collab-title">Decision Log</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">대상</label><select class="form-select" id="decision-target"><option>Project</option><option>Requirement</option><option>Task</option><option>Test Case</option><option>API Spec</option><option>Risk</option><option>Meeting</option></select></div>
+          <div class="form-group"><label class="form-label">대상 ID</label><input class="form-input" id="decision-target-id" placeholder="예: FR-003"></div>
+        </div>
+        <textarea class="form-textarea" id="decision-body" placeholder="결정사항과 근거를 함께 남기세요. 예: FR-003 PUT/DELETE는 다음 스프린트로 이동. 이유: API 안정화 우선."></textarea>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="addDecision()">결정 기록</button>
+        <div class="thread-preview">${decisions.map(d => `<div class="thread-msg"><div class="thread-meta"><span>${esc(d.targetType)} ${esc(d.targetId||'')}</span><span>${esc(d.createdAt)}</span></div><div class="thread-text">${esc(d.body)}</div></div>`).join('') || '<div class="thread-msg"><div class="thread-text">아직 결정 로그가 없습니다.</div></div>'}</div>
+      </div>
+    </div>
+    <div class="collab-card" style="margin-top:14px">
+      <div class="collab-title">Activity Timeline</div>
+      <div class="thread-preview">${activity.map(a => `<div class="thread-msg"><div class="thread-meta"><span>${esc(a.actor)} · ${esc(a.type)} · ${esc(a.targetType)} ${esc(a.targetId||'')}</span><span>${esc(a.createdAt)}</span></div><div class="thread-text">${esc(a.body)}</div></div>`).join('') || '<div class="thread-msg"><div class="thread-text">요구사항, Task, 댓글, 결정사항 변경이 여기에 쌓입니다.</div></div>'}</div>
     </div>`;
   updateAuthUI();
 }
@@ -2991,6 +3064,7 @@ function addCollabMember() {
   if (!name) { toast('팀원 이름을 입력하세요', 'err'); return; }
   S.collaboration.members.push({id: uid('mem'), name, role: v('collab-member-role') || 'Member', status: 'Invited', joinedAt: today()});
   S.collaboration.notifications.push({id: uid('noti'), type:'member_invited', channel:'app', status:'queued', body:`${name}님을 ${S.collaboration.workspaceName}에 초대했습니다.`, createdAt:today()});
+  logActivity('member_invited', `${name}님을 ${v('collab-member-role') || 'Member'} 역할로 초대했습니다.`, 'Workspace', S.collaboration.workspaceId);
   save(); renderCollaboration(); toast('✓ 멤버 초대 큐 생성됨', 'ok');
 }
 function addCollabComment() {
@@ -3001,11 +3075,30 @@ function addCollabComment() {
   const item = {id: uid('cmt'), targetType: v('collab-target') || 'Project', targetId:'', author: currentUserLabel(), body, mentions: mention ? [mention.replace(/^@/,'')] : [], createdAt: today()};
   S.collaboration.comments.push(item);
   if (mention) S.collaboration.notifications.push({id: uid('noti'), type:'mention', channel:'app', status:'queued', body:`${mention}님이 ${item.targetType} 댓글에서 멘션되었습니다: ${body}`, createdAt:today()});
+  logActivity('comment_added', body, item.targetType, item.targetId);
   save(); renderCollaboration(); toast('✓ 댓글 저장됨', 'ok');
+}
+function addDecision() {
+  ensureWorkspace();
+  const body = v('decision-body').trim();
+  if (!body) { toast('결정사항을 입력하세요', 'err'); return; }
+  const decision = {
+    id: uid('dec'),
+    targetType: v('decision-target') || 'Project',
+    targetId: v('decision-target-id').trim(),
+    author: currentUserLabel(),
+    body,
+    createdAt: today()
+  };
+  S.collaboration.decisions.push(decision);
+  S.collaboration.notifications.push({id: uid('noti'), type:'decision_recorded', channel:'app', status:'queued', body:`결정사항 기록: ${body}`, createdAt:today()});
+  logActivity('decision_recorded', body, decision.targetType, decision.targetId);
+  save(); renderCollaboration(); toast('✓ 결정사항 기록됨', 'ok');
 }
 function queueKakaoInvite() {
   ensureWorkspace();
   S.collaboration.notifications.push({id: uid('noti'), type:'kakao_invite', channel:'kakao', status:'needs_server', body:`${S.collaboration.workspaceName} 초대 메시지 발송 준비. 카카오 메시지 API 권한과 서버 함수가 필요합니다.`, createdAt:today()});
+  logActivity('kakao_invite_queued', '카카오톡 초대 메시지 발송 준비 큐가 생성되었습니다.', 'Workspace', S.collaboration.workspaceId);
   save(); renderCollaboration(); toast('카카오톡 초대는 서버 함수/심사 준비 후 발송됩니다', 'info');
 }
 function queueCloudSave() {

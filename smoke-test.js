@@ -30,6 +30,7 @@ async function main() {
     collaborationVisibleAfterClick: false,
     collaborationMemberAdded: false,
     collaborationCommentAdded: false,
+    collaborationDecisionAdded: false,
     demoLoaded: false,
     demoCounts: {},
     errors,
@@ -67,6 +68,10 @@ async function main() {
   await page.locator("#collab-comment").fill("FR-003 범위를 백엔드 API와 맞춰 확인해주세요.");
   await page.locator('button[onclick="addCollabComment()"]').click();
   result.collaborationCommentAdded = await page.getByText("FR-003 범위").count() > 0;
+  await page.locator("#decision-target-id").fill("FR-003");
+  await page.locator("#decision-body").fill("FR-003 PUT/DELETE는 다음 스프린트로 넘기고 GET/POST를 먼저 확정한다.");
+  await page.locator('button[onclick="addDecision()"]').click();
+  result.collaborationDecisionAdded = await page.getByText("PUT/DELETE").count() > 0;
   await page.screenshot({ path: path.resolve(__dirname, "smoke-collaboration.png"), fullPage: false });
 
   await browser.close();

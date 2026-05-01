@@ -52,9 +52,18 @@ Once Supabase is configured, the **Collaboration** page can:
 - sign in with Kakao
 - upload the current ProjectOS snapshot to Supabase
 - load the snapshot from Supabase
+- keep decision logs and activity timeline data inside the project snapshot
 - keep local fallback behavior when Supabase is not configured
 
-## 4. KakaoTalk invite/message
+## 4. Collaboration model
+
+ProjectOS is designed as a traceable collaboration OS, not a generic note app. The collaboration surface should preserve:
+- Comments and mentions on project artifacts
+- Decision logs with target type and target ID
+- Activity timeline entries for requirement, task, test case, API, risk, and meeting changes
+- Traceability health metrics such as Requirements covered by both Tasks and Test Cases
+
+## 5. KakaoTalk invite/message
 
 KakaoTalk message sending requires Kakao API permissions and user consent. Do not put Kakao admin keys or service role keys in `index.html`.
 

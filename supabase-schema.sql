@@ -53,11 +53,34 @@ create table if not exists public.notifications (
   sent_at timestamptz
 );
 
+create table if not exists public.decisions (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  target_type text not null,
+  target_id text,
+  body text not null,
+  author_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.activity_log (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  target_type text not null,
+  target_id text,
+  type text not null,
+  body text not null,
+  actor_id uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
 alter table public.workspaces enable row level security;
 alter table public.workspace_members enable row level security;
 alter table public.project_snapshots enable row level security;
 alter table public.comments enable row level security;
 alter table public.notifications enable row level security;
+alter table public.decisions enable row level security;
+alter table public.activity_log enable row level security;
 
 create or replace function public.is_workspace_member(target_workspace uuid)
 returns boolean
@@ -147,3 +170,27 @@ create policy "members queue notifications"
 on public.notifications
 for insert
 with check (workspace_id is null or public.is_workspace_member(workspace_id));
+
+drop policy if exists "members read decisions" on public.decisions;
+create policy "members read decisions"
+on public.decisions
+for select
+using (public.is_workspace_member(workspace_id));
+
+drop policy if exists "members write decisions" on public.decisions;
+create policy "members write decisions"
+on public.decisions
+for insert
+with check (public.is_workspace_member(workspace_id) and author_id = auth.uid());
+
+drop policy if exists "members read activity log" on public.activity_log;
+create policy "members read activity log"
+on public.activity_log
+for select
+using (public.is_workspace_member(workspace_id));
+
+drop policy if exists "members write activity log" on public.activity_log;
+create policy "members write activity log"
+on public.activity_log
+for insert
+with check (public.is_workspace_member(workspace_id));
