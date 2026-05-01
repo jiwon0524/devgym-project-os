@@ -3284,29 +3284,32 @@ async function syncToCloudNow(silent=false) {
     if (!requireProjectEdit('Supabase 업로드')) return;
     const client = await getSupabaseClient();
     if (!POS_SESSION?.user) { if (!silent) toast('카카오 로그인 후 업로드할 수 있습니다', 'err'); return; }
-    await client.from('workspaces').upsert({
+    const { error: workspaceError } = await client.from('workspaces').upsert({
       id: S.collaboration.workspaceId,
       name: S.collaboration.workspaceName || 'ProjectOS Workspace',
       owner_id: POS_SESSION.user.id,
       invite_code: S.collaboration.inviteCode,
       updated_at: new Date().toISOString()
     }, { onConflict: 'id' });
-    await client.from('workspace_members').upsert({
+    if (workspaceError) throw workspaceError;
+    const { error: memberError } = await client.from('workspace_members').upsert({
       workspace_id: S.collaboration.workspaceId,
       user_id: POS_SESSION.user.id,
       display_name: currentUserLabel(),
       role: 'Owner',
       status: 'Active'
     }, { onConflict: 'workspace_id,user_id' });
+    if (memberError) throw memberError;
     const payload = { workspace_id: S.collaboration.workspaceId, owner_id: POS_SESSION.user.id, state: S, updated_at: new Date().toISOString() };
     const { error } = await client.from('project_snapshots').upsert(payload, { onConflict: 'workspace_id' });
     if (error) throw error;
-    await client.from('snapshot_versions').insert({
+    const { error: versionError } = await client.from('snapshot_versions').insert({
       workspace_id: S.collaboration.workspaceId,
       actor_id: POS_SESSION.user.id,
       summary: 'ProjectOS snapshot uploaded',
       state: S
     });
+    if (versionError) throw versionError;
     if (!silent) toast('✓ Supabase 업로드 완료', 'ok');
   } catch(e) { if (!silent) toast(e.message || 'Supabase 업로드 실패', 'err'); }
 }
