@@ -816,6 +816,11 @@ html,body{height:100%;overflow:hidden}
 .collab-pill.ready{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
 .collab-pill.review{border-color:#fde68a;background:#fffbeb;color:#b45309}
 .collab-pill.backend{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8}
+.login-menu{position:fixed;top:56px;right:144px;width:280px;background:#fff;border:1px solid var(--bd1);border-radius:8px;box-shadow:0 16px 44px rgba(15,23,42,.16);z-index:900;display:none;padding:14px}
+.login-menu.open{display:block}
+.login-menu-title{font-size:13px;font-weight:800;color:var(--t1);margin-bottom:5px}
+.login-menu-body{font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px}
+.login-menu-actions{display:flex;gap:8px;flex-wrap:wrap}
 .collab-stack{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
 .collab-metric{border:1px solid var(--bd2);border-radius:7px;padding:11px;background:#fff}
 .collab-metric-num{font-size:20px;font-weight:900;color:var(--t1);line-height:1}
@@ -867,9 +872,19 @@ html,body{height:100%;overflow:hidden}
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       가이드
     </button>
-    <button class="btn btn-sm" id="auth-status-btn" onclick="nav('collaboration')">Offline</button>
+    <button class="btn btn-sm" id="auth-status-btn" onclick="toggleLoginMenu()">Login</button>
     <button class="btn btn-sm" onclick="openModal('settings')">Settings</button>
     <button class="btn btn-sm btn-primary" onclick="loadSample()">Load Demo</button>
+  </div>
+</div>
+
+<div class="login-menu" id="login-menu">
+  <div class="login-menu-title" id="login-menu-title">Kakao Login</div>
+  <div class="login-menu-body" id="login-menu-body">카카오 로그인은 사용자 신원 확인용입니다. 협업 참여는 Collaboration의 초대 코드/링크로 진행합니다.</div>
+  <div class="login-menu-actions">
+    <button class="btn btn-sm btn-primary" onclick="signInWithKakao()">카카오 로그인</button>
+    <button class="btn btn-sm" onclick="signOutCollab()">로그아웃</button>
+    <button class="btn btn-sm" onclick="nav('collaboration');closeLoginMenu()">협업 설정</button>
   </div>
 </div>
 
@@ -2977,8 +2992,6 @@ function renderCollaboration() {
           <div class="collab-metric"><div class="collab-metric-num">${c.members.length}</div><div class="collab-metric-label">Members</div></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-          <button class="btn btn-primary" onclick="signInWithKakao()">카카오 로그인</button>
-          <button class="btn" onclick="signOutCollab()">로그아웃</button>
           <button class="btn" onclick="copyPersonalCode()">내 코드 복사</button>
           <button class="btn" onclick="syncFromCloud()">Supabase에서 불러오기</button>
           <button class="btn" onclick="syncToCloudNow()">현재 데이터 업로드</button>
@@ -3177,6 +3190,15 @@ async function signOutCollab() {
     updateAuthUI(); renderCollaboration();
   } catch(e) { toast(e.message || '로그아웃 실패', 'err'); }
 }
+function toggleLoginMenu() {
+  const menu = document.getElementById('login-menu');
+  if (menu) menu.classList.toggle('open');
+  updateAuthUI();
+}
+function closeLoginMenu() {
+  const menu = document.getElementById('login-menu');
+  if (menu) menu.classList.remove('open');
+}
 async function syncToCloudNow(silent=false) {
   try {
     ensureWorkspace();
@@ -3218,13 +3240,19 @@ async function subscribeWorkspace() {
 }
 function updateAuthUI() {
   const btn = document.getElementById('auth-status-btn');
+  const title = document.getElementById('login-menu-title');
+  const body = document.getElementById('login-menu-body');
   if (!btn) return;
   if (POS_SESSION?.user) {
     btn.textContent = 'Kakao On';
     btn.classList.add('btn-primary');
+    if (title) title.textContent = currentUserLabel();
+    if (body) body.textContent = `로그인됨 · 개인 코드 ${S.collaboration?.personalCode || ''}. 협업 참여는 초대 코드/링크로 진행합니다.`;
   } else {
-    btn.textContent = POS_CONFIG.supabaseUrl ? 'Login Ready' : 'Offline';
+    btn.textContent = POS_CONFIG.supabaseUrl ? 'Login' : 'Login';
     btn.classList.remove('btn-primary');
+    if (title) title.textContent = 'Kakao Login';
+    if (body) body.textContent = POS_CONFIG.supabaseUrl ? '카카오 로그인을 사용할 준비가 됐습니다. 협업 참여는 Collaboration의 초대 코드/링크로 진행합니다.' : 'Settings에서 Supabase URL과 key를 입력하면 카카오 로그인을 사용할 수 있습니다.';
   }
 }
 
