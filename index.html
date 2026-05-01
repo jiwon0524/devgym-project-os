@@ -842,7 +842,6 @@ html,body{height:100%;overflow:hidden}
     </button>
     <button class="btn btn-sm" id="auth-status-btn" onclick="toggleLoginMenu()">Login</button>
     <button class="btn btn-sm" onclick="openModal('settings')">Settings</button>
-    <button class="btn btn-sm btn-primary" onclick="loadSample()">Load Demo</button>
   </div>
 </div>
 
@@ -952,7 +951,7 @@ html,body{height:100%;overflow:hidden}
   <div class="page-hdr">
     <div class="page-hdr-info">
       <div class="page-hdr-title" id="dash-pname">프로젝트명 미설정</div>
-      <div class="page-hdr-sub" id="dash-psub">Load Demo로 학사 도구 샘플을 불러와 시작하세요</div>
+      <div class="page-hdr-sub" id="dash-psub">Project Brief를 작성해 프로젝트를 시작하세요</div>
     </div>
     <div class="page-hdr-actions">
       <button class="help-btn" onclick="openHelp('dashboard')" title="Dashboard 사용법">?</button>
@@ -2095,11 +2094,6 @@ function saveConfig() {
   try { localStorage.setItem(CONFIG_KEY, JSON.stringify(POS_CONFIG)); } catch(e) {}
 }
 
-// ── DEMO DATA ─────────────────────────────────────────────────
-function loadSample() {
-  loadAcademicToolDemo();
-}
-
 // ── NAVIGATION ──────────────────────────────────────────────────
 function nav(p) {
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
@@ -2304,7 +2298,7 @@ function renderReqs() {
       <td>${tcs.map(t=>`<span class="chip ${t.status==='Pass'?'chip-green':t.status==='Fail'?'chip-red':''}">${t.id}</span>`).join('')||'<span style="color:var(--t4);font-size:11px">—</span>'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="initReqModal('${r.id}');openModal('add-req')">✎</button></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--t3)">요구사항을 추가하세요. '+ Add' 버튼을 클릭하거나 '⚡ Load Demo'로 시작하세요.</td></tr>`;
+  }).join('') : `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--t3)">요구사항을 추가하세요. '+ Add' 버튼을 클릭해 시작하세요.</td></tr>`;
 
   // Card view
   const cv = document.getElementById('req-card-view');
@@ -3761,7 +3755,7 @@ function renderCoach() {
 function renderDashboard() {
   const p = S.project;
   document.getElementById('dash-pname').textContent = p.name || '프로젝트명 미설정';
-  document.getElementById('dash-psub').textContent = p.tagline || 'Load Demo 버튼으로 학사 도구 샘플을 불러오거나 Project Brief를 작성하세요';
+  document.getElementById('dash-psub').textContent = p.tagline || 'Project Brief를 작성해 프로젝트를 시작하세요';
 
   const reqs = S.requirements, tasks = S.tasks, tcs = S.testCases;
   const done = tasks.filter(t=>t.status==='Done').length;
@@ -4877,112 +4871,6 @@ function sendAIInput() {
   const keys = Object.keys(AI_QA);
   const matched = keys.find(k => q.includes(k.slice(0,4))) || null;
   askAI(matched || q);
-}
-
-function loadAcademicToolDemo() {
-  if (!confirm('대학교 학사 도구 샘플로 현재 프로젝트 데이터를 교체합니다. 계속하시겠습니까?')) return;
-  installAcademicDiagramTemplates();
-  S = defaultState();
-  Object.assign(S.project, {
-    name: '대학교 학사 관리 도구',
-    status: 'Planning',
-    tagline: '수강신청, 성적, 상담, 공지, 졸업요건을 한 곳에서 추적하는 학사 협업 시스템',
-    start: '2026-03-01',
-    end: '2026-06-30',
-    members: '김PM(PM), 이FE(Frontend), 박BE(Backend), 최QA(QA), 정교무처(Stakeholder)',
-    roles: '- 김PM: 요구사항/일정/리스크 관리\n- 이FE: 학생/교수/교무처 화면 개발\n- 박BE: 학사 API, 권한, DB 설계\n- 최QA: 수강신청/성적/졸업요건 테스트\n- 정교무처: 업무 규칙 승인',
-    purpose: '학생, 교수, 교무처가 학사 정보를 같은 기준으로 확인하고 처리할 수 있는 웹 기반 학사 도구를 만든다.',
-    problem: '수강신청, 성적 확인, 상담 예약, 공지, 졸업요건 확인이 여러 시스템에 흩어져 있어 학생 문의와 행정 처리 시간이 증가한다.',
-    users: '학생, 교수, 학과 조교, 교무처 관리자, 시스템 관리자',
-    value: '학생은 학사 상태를 한눈에 보고, 교수는 상담/성적 업무를 줄이며, 교무처는 변경 이력과 승인 근거를 남긴다.',
-    features: '통합 로그인, 수강신청, 시간표, 성적 조회, 상담 예약, 공지, 졸업요건 진단, 교무처 승인/감사로그',
-    success: '수강신청 오류율 1% 이하, 졸업요건 문의 30% 감소, 핵심 API 95th 응답 300ms 이하, 주요 요구사항 TC 커버리지 90% 이상'
-  });
-  S.requirements = [
-    {id:'FR-001',type:'FR',title:'학생 통합 로그인',desc:'학생은 학교 계정으로 로그인하고 학번, 학과, 학년, 이수 학점 프로필을 조회할 수 있어야 한다. 실패 시 오류 메시지를 보여준다.',priority:'High',status:'Approved',owner:'박BE',createdAt:today(),updatedAt:today()},
-    {id:'FR-002',type:'FR',title:'수강신청 및 정원 검증',desc:'학생은 개설 강좌를 검색하고 수강신청할 수 있다. 정원 초과, 선수과목 미충족, 시간표 충돌은 신청 전에 차단한다.',priority:'High',status:'In Progress',owner:'박BE',createdAt:today(),updatedAt:today()},
-    {id:'FR-003',type:'FR',title:'개인 시간표 조회',desc:'학생은 신청 완료된 강좌를 주간 시간표로 확인하고 강의실, 교수, 학점 정보를 볼 수 있어야 한다.',priority:'High',status:'In Progress',owner:'이FE',createdAt:today(),updatedAt:today()},
-    {id:'FR-004',type:'FR',title:'성적 조회와 이의신청',desc:'학생은 학기별 성적을 조회하고 정해진 기간 안에 과목별 이의신청을 제출할 수 있어야 한다.',priority:'Medium',status:'Draft',owner:'이FE',createdAt:today(),updatedAt:today()},
-    {id:'FR-005',type:'FR',title:'교수 상담 예약',desc:'학생은 교수 상담 가능 시간을 확인하고 상담을 예약/취소할 수 있으며 교수는 예약 목록을 승인하거나 변경 요청할 수 있다.',priority:'Medium',status:'Draft',owner:'이FE',createdAt:today(),updatedAt:today()},
-    {id:'FR-006',type:'FR',title:'졸업요건 자동 진단',desc:'학생은 전공필수, 교양, 총학점, 졸업논문 조건 충족 여부를 자동으로 확인할 수 있어야 한다.',priority:'High',status:'Draft',owner:'박BE',createdAt:today(),updatedAt:today()},
-    {id:'NFR-001',type:'NFR',title:'수강신청 피크 성능',desc:'수강신청 시작 후 10분 동안 동시 사용자 5,000명 기준 핵심 신청 API의 95th 응답 시간이 300ms 이하여야 한다.',priority:'High',status:'Approved',owner:'박BE',createdAt:today(),updatedAt:today()},
-    {id:'NFR-002',type:'NFR',title:'개인정보 접근 감사로그',desc:'성적, 상담, 졸업요건 데이터 조회/수정은 사용자, 시각, 대상, 작업 유형이 감사로그로 남아야 한다.',priority:'High',status:'Approved',owner:'박BE',createdAt:today(),updatedAt:today()}
-  ];
-  S.tasks = [
-    {id:'TASK-001',title:'학교 계정 로그인 API 설계',desc:'SSO/OAuth 로그인 흐름과 사용자 프로필 매핑 정의',phase:'설계',reqId:'FR-001',owner:'박BE',priority:'High',status:'Done',startDate:'2026-03-04',endDate:'2026-03-08',progress:100,createdAt:today()},
-    {id:'TASK-002',title:'학생 대시보드 UI 구현',desc:'시간표, 신청 현황, 졸업요건 요약 카드 구성',phase:'개발',reqId:'FR-003',owner:'이FE',priority:'High',status:'In Progress',startDate:'2026-03-09',endDate:'2026-03-16',progress:65,createdAt:today()},
-    {id:'TASK-003',title:'수강신청 정원/충돌 검증 서비스',desc:'정원, 선수과목, 시간표 충돌 검증 로직 구현',phase:'개발',reqId:'FR-002',owner:'박BE',priority:'High',status:'In Progress',startDate:'2026-03-10',endDate:'2026-03-20',progress:55,createdAt:today()},
-    {id:'TASK-004',title:'강좌 검색 필터 화면',desc:'학과, 학년, 교수, 시간대 필터 제공',phase:'개발',reqId:'FR-002',owner:'이FE',priority:'Medium',status:'Review',startDate:'2026-03-12',endDate:'2026-03-18',progress:90,createdAt:today()},
-    {id:'TASK-005',title:'성적 조회 API',desc:'학기별 성적과 평점 계산 API 구현',phase:'개발',reqId:'FR-004',owner:'박BE',priority:'Medium',status:'Backlog',startDate:'2026-03-18',endDate:'2026-03-25',progress:0,createdAt:today()},
-    {id:'TASK-006',title:'상담 예약 도메인 모델링',desc:'교수 상담 가능 시간, 예약, 변경 요청 도메인 모델 설계',phase:'설계',reqId:'FR-005',owner:'박BE',priority:'Medium',status:'To Do',startDate:'2026-03-18',endDate:'2026-03-22',progress:10,createdAt:today()},
-    {id:'TASK-007',title:'졸업요건 룰 엔진 초안',desc:'전공필수/교양/총학점/논문 규칙을 룰로 분리',phase:'설계',reqId:'FR-006',owner:'박BE',priority:'High',status:'To Do',startDate:'2026-03-20',endDate:'2026-04-02',progress:5,createdAt:today()},
-    {id:'TASK-008',title:'수강신청 부하 테스트 시나리오',desc:'5,000명 동시 신청 시나리오와 병목 지표 정의',phase:'테스트',reqId:'NFR-001',owner:'최QA',priority:'High',status:'To Do',startDate:'2026-03-25',endDate:'2026-04-05',progress:0,createdAt:today()}
-  ];
-  S.testCases = [
-    {id:'TC-001',title:'정상 로그인 시 학생 프로필 표시',reqId:'FR-001',precondition:'학교 계정이 존재함',input:'valid student account',expected:'대시보드에 학번/학과/학년 표시',actual:'프로필 표시 확인',status:'Pass',owner:'최QA',createdAt:today()},
-    {id:'TC-002',title:'정원 초과 강좌 신청 차단',reqId:'FR-002',precondition:'정원이 이미 찬 강좌',input:'수강신청 버튼 클릭',expected:'신청 실패와 정원 초과 메시지 표시',actual:'',status:'Not Run',owner:'최QA',createdAt:today()},
-    {id:'TC-003',title:'시간표 충돌 강좌 신청 차단',reqId:'FR-002',precondition:'같은 시간대 강좌 신청 완료',input:'충돌 강좌 신청',expected:'시간표 충돌 오류 표시',actual:'',status:'Not Run',owner:'최QA',createdAt:today()},
-    {id:'TC-004',title:'신청 완료 강좌 시간표 표시',reqId:'FR-003',precondition:'수강신청 완료 과목 3개',input:'시간표 화면 진입',expected:'요일/교시/강의실이 표시됨',actual:'모바일에서 강의실 텍스트 줄바꿈 필요',status:'Fail',owner:'최QA',createdAt:today()},
-    {id:'TC-005',title:'졸업요건 미충족 항목 표시',reqId:'FR-006',precondition:'전공필수 1과목 미이수 학생',input:'졸업요건 진단 실행',expected:'미충족 과목과 필요 학점 표시',actual:'',status:'Not Run',owner:'최QA',createdAt:today()}
-  ];
-  S.apis = [
-    {id:'API-001',method:'POST',endpoint:'/api/auth/school-login',desc:'학교 계정 로그인과 학생/교직원 프로필 반환',reqId:'FR-001',owner:'박BE',status:'Review',reqBody:'{"schoolId":"20260001","password":"***"}',resBody:'{"token":"jwt","role":"STUDENT","profile":{"department":"컴퓨터공학과","grade":3}}',errors:'401 INVALID_CREDENTIALS\n423 ACCOUNT_LOCKED',createdAt:today()},
-    {id:'API-002',method:'GET',endpoint:'/api/courses',desc:'개설 강좌 검색',reqId:'FR-002',owner:'박BE',status:'Draft',reqBody:'query: department, grade, keyword, day',resBody:'{"items":[{"courseId":"CSE301","name":"소프트웨어공학","capacity":60,"enrolled":52}]}',errors:'400 INVALID_FILTER',createdAt:today()},
-    {id:'API-003',method:'POST',endpoint:'/api/enrollments',desc:'수강신청 생성과 정원/충돌/선수과목 검증',reqId:'FR-002',owner:'박BE',status:'Draft',reqBody:'{"courseId":"CSE301"}',resBody:'{"status":"ENROLLED","timetableUpdated":true}',errors:'409 CAPACITY_FULL\n409 TIME_CONFLICT\n412 PREREQUISITE_REQUIRED',createdAt:today()},
-    {id:'API-004',method:'GET',endpoint:'/api/students/me/timetable',desc:'학생 개인 시간표 조회',reqId:'FR-003',owner:'박BE',status:'Draft',reqBody:'-',resBody:'{"weeks":[{"day":"MON","period":2,"courseName":"소프트웨어공학","room":"공학관 301"}]}',errors:'401 UNAUTHORIZED',createdAt:today()},
-    {id:'API-005',method:'GET',endpoint:'/api/students/me/graduation-check',desc:'졸업요건 자동 진단 결과 조회',reqId:'FR-006',owner:'박BE',status:'Draft',reqBody:'-',resBody:'{"totalCredits":{"earned":118,"required":130},"missingRequired":["캡스톤디자인"]}',errors:'404 STUDENT_NOT_FOUND',createdAt:today()}
-  ];
-  S.risks = [
-    {id:'RISK-001',title:'수강신청 피크 트래픽 병목',desc:'동시 접속이 몰리면 신청 API가 지연되거나 중복 신청이 발생할 수 있음',impact:'High',probability:'Medium',mitigation:'대기열, DB row lock, idempotency key, 부하 테스트 적용',owner:'박BE',status:'Open',createdAt:today()},
-    {id:'RISK-002',title:'졸업요건 규칙 해석 오류',desc:'학과별/입학년도별 졸업요건이 달라 룰 누락 시 잘못된 진단을 제공할 수 있음',impact:'High',probability:'Medium',mitigation:'교무처 승인 룰 테이블과 샘플 학생 검증 세트 운영',owner:'김PM',status:'Open',createdAt:today()},
-    {id:'RISK-003',title:'성적 개인정보 접근 권한 오류',desc:'권한 설정이 잘못되면 성적/상담 정보가 노출될 수 있음',impact:'High',probability:'Low',mitigation:'RLS, 감사로그, 역할별 접근 테스트, 보안 리뷰',owner:'박BE',status:'Open',createdAt:today()}
-  ];
-  S.meetings = [
-    {id:'MTG-001',title:'학사 도구 킥오프',date:'2026-03-03',attendees:'김PM, 이FE, 박BE, 최QA, 정교무처',agenda:'범위 확정, 주요 사용자, 수강신청 정책',discussion:'수강신청/시간표/성적/졸업요건을 MVP 범위로 잡고 상담 예약은 2차 범위 후보로 둠.',decision:'MVP는 로그인, 수강신청, 시간표, 성적 조회, 졸업요건 진단으로 확정.',actions:'[김PM] 교무처 승인 규칙 목록 정리\n[박BE] 수강신청 검증 API 초안 작성\n[이FE] 학생 대시보드 와이어프레임 작성',nextMeeting:'2026-03-10',createdAt:today()}
-  ];
-  S.collaboration.workspaceName = 'Academic Tool Workspace';
-  S.collaboration.members = [
-    {id:uid('mem'),name:'김PM',role:'Owner',status:'Active',joinedAt:today()},
-    {id:uid('mem'),name:'이FE',role:'Member',status:'Active',joinedAt:today()},
-    {id:uid('mem'),name:'박BE',role:'Member',status:'Active',joinedAt:today()},
-    {id:uid('mem'),name:'최QA',role:'Viewer',status:'Active',joinedAt:today()},
-    {id:uid('mem'),name:'정교무처',role:'Viewer',status:'Invited',joinedAt:today()}
-  ];
-  S.collaboration.comments = [
-    {id:uid('cmt'),targetType:'Requirement',targetId:'FR-002',author:'김PM',body:'@박BE 수강신청 실패 코드가 QA에서 검증 가능하도록 구체화 필요합니다.',mentions:['박BE'],createdAt:today()},
-    {id:uid('cmt'),targetType:'Test Case',targetId:'TC-004',author:'최QA',body:'모바일 시간표에서 강의실 텍스트가 겹칩니다. UI 수정 Task가 필요합니다.',mentions:['이FE'],createdAt:today()}
-  ];
-  S.collaboration.decisions = [
-    {id:uid('dec'),targetType:'Requirement',targetId:'FR-002',author:'김PM',body:'정원/시간표/선수과목 검증은 프론트 사전 검증과 서버 최종 검증을 모두 적용한다.',createdAt:today()}
-  ];
-  S.collaboration.notifications = [
-    {id:uid('noti'),type:'mention',channel:'app',status:'queued',body:'박BE님이 FR-002 댓글에서 멘션되었습니다.',createdAt:today()},
-    {id:uid('noti'),type:'qa_issue',channel:'app',status:'queued',body:'TC-004 Fail: 모바일 시간표 가독성 수정 필요',createdAt:today()}
-  ];
-  S.collaboration.activity = [
-    {id:uid('act'),type:'sample_loaded',targetType:'Project',targetId:'ACADEMIC',actor:'ProjectOS',body:'대학교 학사 도구 샘플 프로젝트가 로드되었습니다.',createdAt:today()},
-    {id:uid('act'),type:'decision_recorded',targetType:'Requirement',targetId:'FR-002',actor:'김PM',body:'수강신청 검증 정책 확정',createdAt:today()}
-  ];
-  S.github = {
-    repoUrl:'https://github.com/example/university-academic-tool',
-    owner:'example',
-    repo:'university-academic-tool',
-    branch:'main',
-    repository:{html_url:'https://github.com/example/university-academic-tool',full_name:'example/university-academic-tool'},
-    issues:[{number:12,title:'TASK-003 수강신청 검증 서비스 구현',state:'open',url:'https://github.com/example/university-academic-tool/issues/12',labels:['backend'],updatedAt:today()}],
-    pulls:[{number:8,title:'TASK-004 강좌 검색 필터 화면',state:'open',url:'https://github.com/example/university-academic-tool/pull/8',user:'이FE',updatedAt:today()}],
-    commits:[{sha:'a1b2c3d',message:'TASK-001 학교 계정 로그인 API 설계',url:'https://github.com/example/university-academic-tool/commit/a1b2c3d',author:'박BE',date:today()}],
-    links:[
-      {id:uid('gh'),taskId:'TASK-003',kind:'issue',ref:'12',title:'수강신청 검증 서비스 구현',url:'https://github.com/example/university-academic-tool/issues/12',createdAt:today()},
-      {id:uid('gh'),taskId:'TASK-004',kind:'pull',ref:'8',title:'강좌 검색 필터 화면',url:'https://github.com/example/university-academic-tool/pull/8',createdAt:today()},
-      {id:uid('gh'),taskId:'TASK-001',kind:'commit',ref:'a1b2c3d',title:'학교 계정 로그인 API 설계',url:'https://github.com/example/university-academic-tool/commit/a1b2c3d',createdAt:today()}
-    ]
-  };
-  S._seq = {FR:6,NFR:2,TASK:8,TC:5,API:5,RISK:3,MTG:1};
-  ensureWorkspace();
-  save(); renderAll(); updateBadges(); updateStatusUI();
-  toast('✓ 대학교 학사 도구 샘플이 로드되었습니다. Diagrams에서 UML 7종을 확인하세요.', 'ok');
-  nav('dashboard');
 }
 
 // ============================================================
