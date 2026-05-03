@@ -5,6 +5,7 @@ import {
   ListChecks,
   Users,
 } from "lucide-react";
+import { AuthPanel } from "../features/auth/AuthPanel.jsx";
 
 const items = [
   { id: "dashboard", label: "대시보드", icon: LayoutDashboard },
@@ -14,10 +15,21 @@ const items = [
   { id: "team", label: "팀", icon: Users },
 ];
 
-export function Sidebar({ activeNav, onNavigate, project }) {
+export function Sidebar({
+  activeNav,
+  onNavigate,
+  project,
+  backendMode,
+  authUser,
+  authLoading,
+  authError,
+  onLogin,
+  onSignUp,
+  onLogout,
+}) {
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-surface-line bg-white">
-      <div className="flex h-16 items-center gap-3 border-b border-surface-line px-5">
+    <aside className="sticky top-0 z-30 flex w-full shrink-0 flex-col border-b border-surface-line bg-white md:static md:h-screen md:w-64 md:border-b-0 md:border-r">
+      <div className="flex h-16 items-center gap-3 border-b border-surface-line px-4 md:px-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink-strong text-sm font-semibold text-white">
           DG
         </div>
@@ -27,7 +39,7 @@ export function Sidebar({ activeNav, onNavigate, project }) {
         </div>
       </div>
 
-      <nav className="space-y-1 p-3" aria-label="주요 메뉴">
+      <nav className="nav-scrollbar flex gap-1 overflow-x-auto p-2 md:block md:space-y-1 md:p-3" aria-label="주요 메뉴">
         {items.map((item) => {
           const Icon = item.icon;
           const active = activeNav === item.id;
@@ -37,20 +49,43 @@ export function Sidebar({ activeNav, onNavigate, project }) {
               key={item.id}
               type="button"
               onClick={() => onNavigate(item.id)}
-              className={`flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition duration-150 ${
+              className={`flex h-10 w-auto shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-medium transition duration-150 md:w-full md:gap-3 md:px-3 md:text-sm ${
                 active
                   ? "bg-surface-muted text-ink-strong"
                   : "text-ink-muted hover:bg-surface-muted hover:text-ink-strong"
               }`}
             >
-              <Icon size={17} aria-hidden="true" />
+              <Icon size={17} className="hidden md:block" aria-hidden="true" />
               <span>{item.label}</span>
             </button>
           );
         })}
       </nav>
 
-      <div className="mt-auto border-t border-surface-line p-4">
+      {backendMode === "supabase" ? (
+        <div className="border-t border-surface-line p-3 md:hidden">
+          <AuthPanel
+            mode={backendMode}
+            user={authUser}
+            loading={authLoading}
+            error={authError}
+            onLogin={onLogin}
+            onSignUp={onSignUp}
+            onLogout={onLogout}
+          />
+        </div>
+      ) : null}
+
+      <div className="mt-auto hidden space-y-4 border-t border-surface-line p-4 md:block">
+        <AuthPanel
+          mode={backendMode}
+          user={authUser}
+          loading={authLoading}
+          error={authError}
+          onLogin={onLogin}
+          onSignUp={onSignUp}
+          onLogout={onLogout}
+        />
         <p className="text-xs font-medium uppercase text-ink-faint">현재 프로젝트</p>
         <p className="mt-2 truncate text-sm font-medium text-ink-strong">
           {project?.name || "아직 프로젝트가 없습니다"}

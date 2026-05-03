@@ -82,15 +82,29 @@ async function main() {
 
     await page.getByRole("main").getByRole("button", { name: /^요구사항$/i }).click();
     await page.getByRole("button", { name: /분석하기/i }).click();
-    await page.getByRole("button", { name: /작업 보드에 추가/i }).click();
+    await page.locator('button:has-text("요구사항")').last().click();
+    const requirementSections = await page.locator("section", { hasText: "기능 요구사항" }).count();
+    await page.getByRole("button", { name: "DB/ERD" }).click();
+    const erdVisible = await page.getByRole("heading", { name: "users" }).isVisible();
+    await page.getByRole("button", { name: /작업 보드로 변환/i }).click();
+    const generatedTaskAdded = await page.getByRole("heading", { name: "작업 목록" }).isVisible();
+
+    await page.getByRole("main").getByRole("button", { name: /^팀$/i }).click();
+    await page.getByLabel("이메일").fill("collab@devgym.dev");
+    await page.getByRole("button", { name: /^초대하기$/i }).click();
+    const inviteVisible = await page.getByText("collab@devgym.dev", { exact: true }).isVisible();
+
+    await page.getByRole("main").getByRole("button", { name: /^활동$/i }).click();
 
     const result = {
       title: await page.title(),
-      sidebarVisible: await page.getByText("ProjectOS").isVisible(),
+      sidebarVisible: await page.getByText("ProjectOS", { exact: true }).isVisible(),
       workspaceVisible: await page.getByText("프로젝트 워크스페이스").isVisible(),
-      requirementSections: await page.locator("section", { hasText: "기능 요구사항" }).count(),
-      erdVisible: await page.getByRole("heading", { name: "users" }).isVisible(),
-      generatedTaskAdded: await page.getByText("작업을 추가했습니다").isVisible(),
+      requirementSections,
+      erdVisible,
+      generatedTaskAdded,
+      inviteVisible,
+      activityVisible: await page.getByText("프로젝트 활동 기록").isVisible(),
       tasksNavVisible: await page.getByRole("button", { name: /^내 작업$/i }).isVisible(),
       errors,
     };

@@ -1,16 +1,35 @@
-import { CalendarDays, CircleDot, Users } from "lucide-react";
+import { CalendarDays, CircleDot, ShieldCheck, Users } from "lucide-react";
 import { StatusBadge } from "../components/StatusBadge.jsx";
+import { ActivityList } from "../features/activity/ActivityList.jsx";
+import { CommentsPanel } from "../features/comments/CommentsPanel.jsx";
+import { getRoleLabel } from "../features/permissions/permissions.js";
+import { OnlineMembers } from "../features/team/OnlineMembers.jsx";
 
-export function RightPanel({ project, tasks, team, activeView }) {
+export function RightPanel({
+  project,
+  tasks,
+  team,
+  activeWorkspace,
+  currentUser,
+  currentRole,
+  comments = [],
+  onAddComment,
+  onEditComment,
+  onDeleteComment,
+  activities = [],
+  activeView,
+  backendMode,
+  realtimeStatus,
+}) {
   const doneTasks = tasks.filter((task) => task.status === "Done" || task.status === "완료").length;
   const progress = tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0;
 
   return (
-    <aside className="hidden h-screen w-80 shrink-0 border-l border-surface-line bg-white xl:block">
+    <aside className="hidden h-screen w-80 shrink-0 overflow-y-auto border-l border-surface-line bg-white xl:block">
       <div className="border-b border-surface-line px-5 py-5">
-        <p className="text-xs font-medium uppercase text-ink-muted">상세 정보</p>
+        <p className="text-xs font-medium uppercase text-ink-muted">협업 패널</p>
         <h2 className="mt-2 text-base font-semibold text-ink-strong">
-          {project?.name || "프로젝트 설정"}
+          {activeWorkspace?.name || project?.name || "프로젝트 설정"}
         </h2>
         <p className="mt-2 text-sm leading-6 text-ink-muted">
           {project?.description ||
@@ -18,38 +37,22 @@ export function RightPanel({ project, tasks, team, activeView }) {
         </p>
       </div>
 
-      <div className="space-y-5 p-5">
-        <section>
-          <h3 className="text-sm font-semibold text-ink-strong">워크스페이스 흐름</h3>
-          <div className="mt-3 space-y-3">
-            {["생성", "요구사항", "작업", "팀"].map((step, index) => (
-              <div key={step} className="flex items-center gap-3 text-sm">
-                <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold ${
-                    project || index === 0
-                      ? "border-brand-line bg-brand-soft text-brand"
-                      : "border-surface-line text-ink-faint"
-                  }`}
-                >
-                  {index + 1}
-                </span>
-                <span className={project || index === 0 ? "text-ink-base" : "text-ink-faint"}>
-                  {step}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
+      <div className="space-y-6 p-5">
+        <OnlineMembers members={team} />
 
         <section className="rounded-lg border border-surface-line bg-surface-muted p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-ink-strong">
             <CircleDot size={16} aria-hidden="true" />
-            집중 영역
+            실시간 상태
           </div>
           <p className="mt-2 text-sm leading-6 text-ink-muted">
-            {activeView === "requirements"
-              ? "제품 아이디어를 기능, UI, API, 데이터베이스 요구사항으로 나눠 정리합니다."
-              : "한 화면에는 하나의 목적만 담습니다. 프로젝트를 만든 뒤 탭으로 필요한 흐름만 이동합니다."}
+            {backendMode === "supabase"
+              ? realtimeStatus === "SUBSCRIBED"
+                ? "Supabase Realtime으로 요구사항, 작업, 댓글, 활동 변경을 구독하고 있습니다."
+                : "Supabase Realtime 연결을 준비하고 있습니다."
+              : activeView === "requirements"
+                ? "Mock 모드에서는 팀원이 같은 요구사항을 보고 있다는 전제로 편집 상태와 최근 변경을 보여줍니다."
+                : "Supabase 환경변수를 설정하면 presence와 변경 이벤트가 실시간으로 반영됩니다."}
           </p>
         </section>
 
@@ -69,10 +72,15 @@ export function RightPanel({ project, tasks, team, activeView }) {
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="flex items-center gap-2 text-ink-muted">
-                    <Users size={15} aria-hidden="true" />
-                    팀
+                    <Users size={15} aria-hidden="true" />팀
                   </dt>
                   <dd className="font-medium text-ink-strong">{team.length}명</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="flex items-center gap-2 text-ink-muted">
+                    <ShieldCheck size={15} aria-hidden="true" />내 권한
+                  </dt>
+                  <dd className="font-medium text-ink-strong">{getRoleLabel(currentRole)}</dd>
                 </div>
               </dl>
             </section>
@@ -88,6 +96,20 @@ export function RightPanel({ project, tasks, team, activeView }) {
                   style={{ width: `${progress}%` }}
                 />
               </div>
+            </section>
+
+            <CommentsPanel
+              comments={comments.slice(0, 4)}
+              currentUser={currentUser}
+              currentRole={currentRole}
+              onAddComment={onAddComment}
+              onEditComment={onEditComment}
+              onDeleteComment={onDeleteComment}
+            />
+
+            <section>
+              <h3 className="mb-3 text-sm font-semibold text-ink-strong">최근 변경</h3>
+              <ActivityList activities={activities.slice(0, 4)} compact />
             </section>
           </>
         ) : null}

@@ -11,7 +11,7 @@ export function Tabs({ tabs, activeTab, onChange }) {
               key={id}
               type="button"
               onClick={() => onChange(id)}
-              className={`border-b-2 px-3 py-3 text-sm font-medium transition duration-150 ${
+              className={`border-b-2 px-3 py-3 text-sm font-medium transition duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                 activeTab === id
                   ? "border-brand text-ink-strong"
                   : "border-transparent text-ink-muted hover:text-ink-strong"

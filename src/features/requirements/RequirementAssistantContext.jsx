@@ -31,11 +31,14 @@ export function RequirementAssistantProvider({
     setIsAnalyzing(true);
     setLastAddedCount(null);
     await new Promise((resolve) => setTimeout(resolve, 520));
-    const nextAnalysis = analyzeRequirement(input);
-    onAnalysisChange(nextAnalysis);
-    setOpenSections(defaultOpenSections);
-    setActiveFilter("all");
-    setIsAnalyzing(false);
+    try {
+      const nextAnalysis = analyzeRequirement(input);
+      await onAnalysisChange(nextAnalysis);
+      setOpenSections(defaultOpenSections);
+      setActiveFilter("all");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const toggleSection = (sectionId) => {

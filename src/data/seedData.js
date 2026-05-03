@@ -6,9 +6,9 @@ export const workflowSteps = [
 ];
 
 export const defaultTeam = [
-  { id: "u-1", name: "지원", role: "프로덕트 오너", status: "Active" },
-  { id: "u-2", name: "민수", role: "프론트엔드 개발자", status: "Active" },
-  { id: "u-3", name: "소라", role: "디자이너", status: "Invited" },
+  { id: "wm-1", userId: "u-1", name: "지원", email: "jiwon@devgym.dev", role: "Owner", status: "Active" },
+  { id: "wm-2", userId: "u-2", name: "민지", email: "minji@devgym.dev", role: "Admin", status: "Active" },
+  { id: "wm-3", userId: "u-3", name: "도윤", email: "doyun@devgym.dev", role: "Member", status: "Active" },
 ];
 
 export const defaultTasks = [

@@ -63,6 +63,14 @@ button {
   border-radius: 999px;
 }
 
+.nav-scrollbar {
+  scrollbar-width: none;
+}
+
+.nav-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes fade-slide-up {
   from {
     opacity: 0;

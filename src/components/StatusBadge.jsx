@@ -8,6 +8,12 @@ const toneClasses = {
   High: "border-red-200 bg-red-50 text-red-700",
   Medium: "border-amber-200 bg-amber-50 text-amber-700",
   Low: "border-slate-200 bg-slate-50 text-slate-600",
+  high: "border-red-200 bg-red-50 text-red-700",
+  medium: "border-amber-200 bg-amber-50 text-amber-700",
+  low: "border-slate-200 bg-slate-50 text-slate-600",
+  todo: "border-slate-200 bg-slate-50 text-slate-700",
+  in_progress: "border-blue-200 bg-blue-50 text-blue-700",
+  done: "border-emerald-200 bg-emerald-50 text-emerald-700",
   높음: "border-red-200 bg-red-50 text-red-700",
   보통: "border-amber-200 bg-amber-50 text-amber-700",
   낮음: "border-slate-200 bg-slate-50 text-slate-600",
@@ -15,6 +21,8 @@ const toneClasses = {
   Invited: "border-amber-200 bg-amber-50 text-amber-700",
   활성: "border-emerald-200 bg-emerald-50 text-emerald-700",
   초대됨: "border-amber-200 bg-amber-50 text-amber-700",
+  Pending: "border-amber-200 bg-amber-50 text-amber-700",
+  "대기 중": "border-amber-200 bg-amber-50 text-amber-700",
 };
 
 const statusLabels = {
@@ -24,6 +32,12 @@ const statusLabels = {
   High: "높음",
   Medium: "보통",
   Low: "낮음",
+  high: "높음",
+  medium: "보통",
+  low: "낮음",
+  todo: "할 일",
+  in_progress: "진행 중",
+  done: "완료",
   Active: "활성",
   Invited: "초대됨",
   "할 일": "할 일",
@@ -34,6 +48,8 @@ const statusLabels = {
   낮음: "낮음",
   활성: "활성",
   초대됨: "초대됨",
+  Pending: "대기 중",
+  "대기 중": "대기 중",
 };
 
 export function StatusBadge({ value }) {

@@ -1,103 +1,198 @@
--- DevGym ProjectOS collaboration backend
--- Run this in Supabase SQL Editor after enabling the Kakao provider in Auth.
+-- DevGym ProjectOS production schema
+-- Run this file in the Supabase SQL Editor.
 
 create extension if not exists pgcrypto;
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null,
+  display_name text,
+  avatar_url text,
+  created_at timestamptz not null default now()
+);
 
 create table if not exists public.workspaces (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  owner_id uuid not null references auth.users(id) on delete cascade,
-  invite_code text unique not null default upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 10)),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.user_invite_codes (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  personal_code text unique not null default ('U-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6))),
+  owner_id uuid not null references public.profiles(id) on delete cascade,
   created_at timestamptz not null default now()
 );
 
 create table if not exists public.workspace_members (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
-  user_id uuid references auth.users(id) on delete cascade,
-  display_name text not null,
-  role text not null default 'Member' check (role in ('Owner', 'Manager', 'Member', 'Viewer')),
-  status text not null default 'Invited' check (status in ('Invited', 'Active', 'Removed')),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  role text not null check (role in ('owner', 'admin', 'member', 'viewer')),
   created_at timestamptz not null default now(),
   unique (workspace_id, user_id)
 );
 
-create table if not exists public.project_snapshots (
-  workspace_id text primary key,
-  owner_id uuid not null references auth.users(id) on delete cascade,
-  state jsonb not null,
-  updated_at timestamptz not null default now()
+create table if not exists public.projects (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  name text not null,
+  description text,
+  status text not null default 'active' check (status in ('active', 'paused', 'done')),
+  created_by uuid not null references public.profiles(id) on delete restrict,
+  created_at timestamptz not null default now()
 );
 
-create table if not exists public.snapshot_versions (
+create table if not exists public.requirements (
   id uuid primary key default gen_random_uuid(),
-  workspace_id text not null,
-  actor_id uuid references auth.users(id) on delete set null,
-  summary text not null default 'Snapshot saved',
-  state jsonb not null,
+  project_id uuid not null references public.projects(id) on delete cascade,
+  title text not null,
+  original_input text not null,
+  summary text,
+  functional jsonb not null default '[]'::jsonb,
+  non_functional jsonb not null default '[]'::jsonb,
+  ui jsonb not null default '[]'::jsonb,
+  api jsonb not null default '[]'::jsonb,
+  database_schema jsonb not null default '[]'::jsonb,
+  erd_relations jsonb not null default '[]'::jsonb,
+  created_by uuid not null references public.profiles(id) on delete restrict,
+  created_at timestamptz not null default now()
+);
+
+alter table public.requirements add column if not exists summary text;
+alter table public.requirements add column if not exists non_functional jsonb not null default '[]'::jsonb;
+alter table public.requirements add column if not exists erd_relations jsonb not null default '[]'::jsonb;
+
+create table if not exists public.acceptance_criteria (
+  id uuid primary key default gen_random_uuid(),
+  requirement_id uuid not null references public.requirements(id) on delete cascade,
+  content text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.test_cases (
+  id uuid primary key default gen_random_uuid(),
+  requirement_id uuid not null references public.requirements(id) on delete cascade,
+  title text not null,
+  given_text text not null,
+  when_text text not null,
+  then_text text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.risks (
+  id uuid primary key default gen_random_uuid(),
+  requirement_id uuid not null references public.requirements(id) on delete cascade,
+  content text not null,
+  severity text not null default 'medium' check (severity in ('low', 'medium', 'high')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.tasks (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  requirement_id uuid references public.requirements(id) on delete set null,
+  title text not null,
+  description text,
+  status text not null default 'todo' check (status in ('todo', 'in_progress', 'done')),
+  priority text not null default 'medium' check (priority in ('low', 'medium', 'high')),
+  assignee_id uuid references public.profiles(id) on delete set null,
+  created_by uuid not null references public.profiles(id) on delete restrict,
   created_at timestamptz not null default now()
 );
 
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
-  workspace_id uuid not null references public.workspaces(id) on delete cascade,
-  target_type text not null,
-  target_id text,
+  project_id uuid not null references public.projects(id) on delete cascade,
+  target_type text not null check (target_type in ('project', 'requirement', 'task')),
+  target_id uuid,
   body text not null,
-  mentions text[] not null default '{}',
-  author_id uuid not null references auth.users(id) on delete cascade,
+  created_by uuid not null references public.profiles(id) on delete restrict,
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.notifications (
-  id uuid primary key default gen_random_uuid(),
-  workspace_id uuid references public.workspaces(id) on delete cascade,
-  recipient_id uuid references auth.users(id) on delete cascade,
-  type text not null,
-  channel text not null default 'app' check (channel in ('app', 'kakao')),
-  status text not null default 'queued' check (status in ('queued', 'needs_server', 'sent', 'failed')),
-  payload jsonb not null default '{}',
-  created_at timestamptz not null default now(),
-  sent_at timestamptz
-);
-
-create table if not exists public.decisions (
+create table if not exists public.activity_logs (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
-  target_type text not null,
-  target_id text,
-  body text not null,
-  author_id uuid not null references auth.users(id) on delete cascade,
+  project_id uuid references public.projects(id) on delete cascade,
+  actor_id uuid references public.profiles(id) on delete set null,
+  action text not null,
+  target_type text,
+  target_id uuid,
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.activity_log (
+create table if not exists public.invitations (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
-  target_type text not null,
-  target_id text,
-  type text not null,
-  body text not null,
-  actor_id uuid references auth.users(id) on delete set null,
+  email text not null,
+  role text not null check (role in ('admin', 'member', 'viewer')),
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'expired')),
+  invited_by uuid not null references public.profiles(id) on delete restrict,
   created_at timestamptz not null default now()
 );
 
+create index if not exists workspace_members_workspace_id_idx on public.workspace_members(workspace_id);
+create index if not exists workspace_members_user_id_idx on public.workspace_members(user_id);
+create index if not exists projects_workspace_id_idx on public.projects(workspace_id);
+create index if not exists requirements_project_id_idx on public.requirements(project_id);
+create index if not exists acceptance_criteria_requirement_id_idx on public.acceptance_criteria(requirement_id);
+create index if not exists test_cases_requirement_id_idx on public.test_cases(requirement_id);
+create index if not exists risks_requirement_id_idx on public.risks(requirement_id);
+create index if not exists tasks_project_id_idx on public.tasks(project_id);
+create index if not exists comments_project_id_idx on public.comments(project_id);
+create index if not exists activity_logs_workspace_id_idx on public.activity_logs(workspace_id);
+create index if not exists invitations_workspace_id_idx on public.invitations(workspace_id);
+create index if not exists invitations_email_idx on public.invitations(lower(email));
+
+alter table public.profiles enable row level security;
 alter table public.workspaces enable row level security;
-alter table public.user_invite_codes enable row level security;
 alter table public.workspace_members enable row level security;
-alter table public.project_snapshots enable row level security;
-alter table public.snapshot_versions enable row level security;
+alter table public.projects enable row level security;
+alter table public.requirements enable row level security;
+alter table public.acceptance_criteria enable row level security;
+alter table public.test_cases enable row level security;
+alter table public.risks enable row level security;
+alter table public.tasks enable row level security;
 alter table public.comments enable row level security;
-alter table public.notifications enable row level security;
-alter table public.decisions enable row level security;
-alter table public.activity_log enable row level security;
+alter table public.activity_logs enable row level security;
+alter table public.invitations enable row level security;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, display_name, avatar_url)
+  values (
+    new.id,
+    coalesce(new.email, ''),
+    coalesce(new.raw_user_meta_data->>'display_name', split_part(coalesce(new.email, '사용자'), '@', 1)),
+    new.raw_user_meta_data->>'avatar_url'
+  )
+  on conflict (id) do update
+    set email = excluded.email,
+        display_name = coalesce(excluded.display_name, public.profiles.display_name),
+        avatar_url = coalesce(excluded.avatar_url, public.profiles.avatar_url);
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
+
+create or replace function public.workspace_role(target_workspace uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select wm.role
+  from public.workspace_members wm
+  where wm.workspace_id = target_workspace
+    and wm.user_id = auth.uid()
+  limit 1;
+$$;
 
 create or replace function public.is_workspace_member(target_workspace uuid)
 returns boolean
@@ -111,113 +206,153 @@ as $$
     from public.workspace_members wm
     where wm.workspace_id = target_workspace
       and wm.user_id = auth.uid()
-      and wm.status = 'Active'
   );
 $$;
 
-create or replace function public.workspace_member_role(target_workspace uuid)
-returns text
+create or replace function public.has_workspace_role(target_workspace uuid, allowed_roles text[])
+returns boolean
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select wm.role
-  from public.workspace_members wm
-  where wm.workspace_id = target_workspace
-    and wm.user_id = auth.uid()
-    and wm.status = 'Active'
+  select coalesce(public.workspace_role(target_workspace) = any(allowed_roles), false);
+$$;
+
+create or replace function public.project_workspace(target_project uuid)
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p.workspace_id
+  from public.projects p
+  where p.id = target_project
   limit 1;
 $$;
 
-create or replace function public.can_edit_workspace(target_workspace uuid)
+create or replace function public.requirement_project(target_requirement uuid)
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select r.project_id
+  from public.requirements r
+  where r.id = target_requirement
+  limit 1;
+$$;
+
+create or replace function public.can_read_requirement(target_requirement uuid)
 returns boolean
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select coalesce(public.workspace_member_role(target_workspace) in ('Owner', 'Manager', 'Member'), false);
+  select public.can_read_project(public.requirement_project(target_requirement));
 $$;
 
-create or replace function public.is_workspace_member_text(target_workspace text)
+create or replace function public.can_edit_requirement_artifacts(target_requirement uuid)
 returns boolean
-language plpgsql
+language sql
 stable
 security definer
 set search_path = public
 as $$
-begin
-  if target_workspace ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
-    return public.is_workspace_member(target_workspace::uuid);
-  end if;
-  return false;
-end;
+  select public.can_edit_project_artifacts(public.requirement_project(target_requirement));
 $$;
 
-create or replace function public.can_edit_workspace_text(target_workspace text)
+create or replace function public.can_read_project(target_project uuid)
 returns boolean
-language plpgsql
+language sql
 stable
 security definer
 set search_path = public
 as $$
-begin
-  if target_workspace ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
-    return public.can_edit_workspace(target_workspace::uuid);
-  end if;
-  return false;
-end;
+  select public.is_workspace_member(public.project_workspace(target_project));
 $$;
 
-drop policy if exists "users manage own invite code" on public.user_invite_codes;
-create policy "users manage own invite code"
-on public.user_invite_codes
-for all
-using (user_id = auth.uid())
-with check (user_id = auth.uid());
+create or replace function public.can_edit_project_artifacts(target_project uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.has_workspace_role(public.project_workspace(target_project), array['owner', 'admin', 'member']);
+$$;
 
-drop policy if exists "workspace owner can manage" on public.workspaces;
-create policy "workspace owner can manage"
-on public.workspaces
-for all
-using (owner_id = auth.uid())
-with check (owner_id = auth.uid());
+create or replace function public.can_manage_project(target_project uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.has_workspace_role(public.project_workspace(target_project), array['owner', 'admin']);
+$$;
 
-drop policy if exists "members can read workspace" on public.workspaces;
-create policy "members can read workspace"
+drop policy if exists "profiles can read own profile" on public.profiles;
+create policy "profiles can read own profile"
+on public.profiles
+for select
+using (
+  id = auth.uid()
+  or exists (
+    select 1
+    from public.workspace_members mine
+    join public.workspace_members teammate on teammate.workspace_id = mine.workspace_id
+    where mine.user_id = auth.uid()
+      and teammate.user_id = profiles.id
+  )
+);
+
+drop policy if exists "profiles can insert own profile" on public.profiles;
+create policy "profiles can insert own profile"
+on public.profiles
+for insert
+with check (id = auth.uid());
+
+drop policy if exists "profiles can update own profile" on public.profiles;
+create policy "profiles can update own profile"
+on public.profiles
+for update
+using (id = auth.uid())
+with check (id = auth.uid());
+
+drop policy if exists "members can read workspaces" on public.workspaces;
+create policy "members can read workspaces"
 on public.workspaces
 for select
 using (public.is_workspace_member(id));
 
-drop policy if exists "members visible to workspace users" on public.workspace_members;
-create policy "members visible to workspace users"
+drop policy if exists "authenticated users can create workspaces" on public.workspaces;
+create policy "authenticated users can create workspaces"
+on public.workspaces
+for insert
+with check (owner_id = auth.uid());
+
+drop policy if exists "owners and admins can update workspaces" on public.workspaces;
+create policy "owners and admins can update workspaces"
+on public.workspaces
+for update
+using (public.has_workspace_role(id, array['owner', 'admin']))
+with check (public.has_workspace_role(id, array['owner', 'admin']));
+
+drop policy if exists "owners can delete workspaces" on public.workspaces;
+create policy "owners can delete workspaces"
+on public.workspaces
+for delete
+using (public.has_workspace_role(id, array['owner']));
+
+drop policy if exists "members can read workspace members" on public.workspace_members;
+create policy "members can read workspace members"
 on public.workspace_members
 for select
 using (public.is_workspace_member(workspace_id) or user_id = auth.uid());
-
-drop policy if exists "owners and managers manage members" on public.workspace_members;
-create policy "owners and managers manage members"
-on public.workspace_members
-for all
-using (
-  exists (
-    select 1 from public.workspace_members wm
-    where wm.workspace_id = workspace_members.workspace_id
-      and wm.user_id = auth.uid()
-      and wm.role in ('Owner', 'Manager')
-      and wm.status = 'Active'
-  )
-)
-with check (
-  exists (
-    select 1 from public.workspace_members wm
-    where wm.workspace_id = workspace_members.workspace_id
-      and wm.user_id = auth.uid()
-      and wm.role in ('Owner', 'Manager')
-      and wm.status = 'Active'
-  )
-);
 
 drop policy if exists "workspace owner can add self member" on public.workspace_members;
 create policy "workspace owner can add self member"
@@ -225,97 +360,318 @@ on public.workspace_members
 for insert
 with check (
   user_id = auth.uid()
-  and role = 'Owner'
-  and status = 'Active'
+  and role = 'owner'
   and exists (
-    select 1 from public.workspaces w
+    select 1
+    from public.workspaces w
     where w.id = workspace_members.workspace_id
       and w.owner_id = auth.uid()
   )
 );
 
-drop policy if exists "snapshot owner access" on public.project_snapshots;
-create policy "snapshot owner access"
-on public.project_snapshots
-for all
-using (owner_id = auth.uid())
-with check (owner_id = auth.uid());
-
-drop policy if exists "members read snapshots" on public.project_snapshots;
-create policy "members read snapshots"
-on public.project_snapshots
-for select
-using (owner_id = auth.uid() or public.is_workspace_member_text(workspace_id));
-
-drop policy if exists "members write snapshots" on public.project_snapshots;
-create policy "members write snapshots"
-on public.project_snapshots
+drop policy if exists "owners and admins can add members" on public.workspace_members;
+create policy "owners and admins can add members"
+on public.workspace_members
 for insert
-with check (owner_id = auth.uid() or public.can_edit_workspace_text(workspace_id));
+with check (public.has_workspace_role(workspace_id, array['owner', 'admin']));
 
-drop policy if exists "members update snapshots" on public.project_snapshots;
-create policy "members update snapshots"
-on public.project_snapshots
+drop policy if exists "invited users can join workspace" on public.workspace_members;
+create policy "invited users can join workspace"
+on public.workspace_members
+for insert
+with check (
+  user_id = auth.uid()
+  and exists (
+    select 1
+    from public.invitations i
+    where i.workspace_id = workspace_members.workspace_id
+      and lower(i.email) = lower(coalesce(auth.jwt()->>'email', ''))
+      and i.status = 'pending'
+      and i.role = workspace_members.role
+  )
+);
+
+drop policy if exists "owners and admins can update members" on public.workspace_members;
+create policy "owners and admins can update members"
+on public.workspace_members
 for update
-using (owner_id = auth.uid() or public.can_edit_workspace_text(workspace_id))
-with check (owner_id = auth.uid() or public.can_edit_workspace_text(workspace_id));
+using (public.has_workspace_role(workspace_id, array['owner', 'admin']))
+with check (public.has_workspace_role(workspace_id, array['owner', 'admin']));
 
-drop policy if exists "members read snapshot versions" on public.snapshot_versions;
-create policy "members read snapshot versions"
-on public.snapshot_versions
+drop policy if exists "owners and admins can remove members" on public.workspace_members;
+create policy "owners and admins can remove members"
+on public.workspace_members
+for delete
+using (public.has_workspace_role(workspace_id, array['owner', 'admin']));
+
+drop policy if exists "members can read workspace projects" on public.projects;
+create policy "members can read workspace projects"
+on public.projects
 for select
-using (public.is_workspace_member_text(workspace_id));
+using (public.is_workspace_member(workspace_id));
 
-drop policy if exists "members write snapshot versions" on public.snapshot_versions;
-create policy "members write snapshot versions"
-on public.snapshot_versions
+drop policy if exists "owners and admins can create projects" on public.projects;
+create policy "owners and admins can create projects"
+on public.projects
 for insert
-with check (actor_id = auth.uid() and public.can_edit_workspace_text(workspace_id));
+with check (
+  created_by = auth.uid()
+  and public.has_workspace_role(workspace_id, array['owner', 'admin'])
+);
 
-drop policy if exists "members read comments" on public.comments;
-create policy "members read comments"
+drop policy if exists "owners and admins can update projects" on public.projects;
+create policy "owners and admins can update projects"
+on public.projects
+for update
+using (public.has_workspace_role(workspace_id, array['owner', 'admin']))
+with check (public.has_workspace_role(workspace_id, array['owner', 'admin']));
+
+drop policy if exists "owners and admins can delete projects" on public.projects;
+create policy "owners and admins can delete projects"
+on public.projects
+for delete
+using (public.has_workspace_role(workspace_id, array['owner', 'admin']));
+
+drop policy if exists "members can read requirements" on public.requirements;
+create policy "members can read requirements"
+on public.requirements
+for select
+using (public.can_read_project(project_id));
+
+drop policy if exists "editors can create requirements" on public.requirements;
+create policy "editors can create requirements"
+on public.requirements
+for insert
+with check (
+  created_by = auth.uid()
+  and public.can_edit_project_artifacts(project_id)
+);
+
+drop policy if exists "editors can update requirements" on public.requirements;
+create policy "editors can update requirements"
+on public.requirements
+for update
+using (public.can_edit_project_artifacts(project_id))
+with check (public.can_edit_project_artifacts(project_id));
+
+drop policy if exists "editors can delete requirements" on public.requirements;
+create policy "editors can delete requirements"
+on public.requirements
+for delete
+using (public.can_edit_project_artifacts(project_id));
+
+drop policy if exists "members can read acceptance criteria" on public.acceptance_criteria;
+create policy "members can read acceptance criteria"
+on public.acceptance_criteria
+for select
+using (public.can_read_requirement(requirement_id));
+
+drop policy if exists "editors can create acceptance criteria" on public.acceptance_criteria;
+create policy "editors can create acceptance criteria"
+on public.acceptance_criteria
+for insert
+with check (public.can_edit_requirement_artifacts(requirement_id));
+
+drop policy if exists "editors can update acceptance criteria" on public.acceptance_criteria;
+create policy "editors can update acceptance criteria"
+on public.acceptance_criteria
+for update
+using (public.can_edit_requirement_artifacts(requirement_id))
+with check (public.can_edit_requirement_artifacts(requirement_id));
+
+drop policy if exists "editors can delete acceptance criteria" on public.acceptance_criteria;
+create policy "editors can delete acceptance criteria"
+on public.acceptance_criteria
+for delete
+using (public.can_edit_requirement_artifacts(requirement_id));
+
+drop policy if exists "members can read test cases" on public.test_cases;
+create policy "members can read test cases"
+on public.test_cases
+for select
+using (public.can_read_requirement(requirement_id));
+
+drop policy if exists "editors can create test cases" on public.test_cases;
+create policy "editors can create test cases"
+on public.test_cases
+for insert
+with check (public.can_edit_requirement_artifacts(requirement_id));
+
+drop policy if exists "editors can update test cases" on public.test_cases;
+create policy "editors can update test cases"
+on public.test_cases
+for update
+using (public.can_edit_requirement_artifacts(requirement_id))
+with check (public.can_edit_requirement_artifacts(requirement_id));
+
+drop policy if exists "editors can delete test cases" on public.test_cases;
+create policy "editors can delete test cases"
+on public.test_cases
+for delete
+using (public.can_edit_requirement_artifacts(requirement_id));
+
+drop policy if exists "members can read risks" on public.risks;
+create policy "members can read risks"
+on public.risks
+for select
+using (public.can_read_requirement(requirement_id));
+
+drop policy if exists "editors can create risks" on public.risks;
+create policy "editors can create risks"
+on public.risks
+for insert
+with check (public.can_edit_requirement_artifacts(requirement_id));
+
+drop policy if exists "editors can update risks" on public.risks;
+create policy "editors can update risks"
+on public.risks
+for update
+using (public.can_edit_requirement_artifacts(requirement_id))
+with check (public.can_edit_requirement_artifacts(requirement_id));
+
+drop policy if exists "editors can delete risks" on public.risks;
+create policy "editors can delete risks"
+on public.risks
+for delete
+using (public.can_edit_requirement_artifacts(requirement_id));
+
+drop policy if exists "members can read tasks" on public.tasks;
+create policy "members can read tasks"
+on public.tasks
+for select
+using (public.can_read_project(project_id));
+
+drop policy if exists "editors can create tasks" on public.tasks;
+create policy "editors can create tasks"
+on public.tasks
+for insert
+with check (
+  created_by = auth.uid()
+  and public.can_edit_project_artifacts(project_id)
+);
+
+drop policy if exists "editors can update tasks" on public.tasks;
+create policy "editors can update tasks"
+on public.tasks
+for update
+using (public.can_edit_project_artifacts(project_id))
+with check (public.can_edit_project_artifacts(project_id));
+
+drop policy if exists "editors can delete tasks" on public.tasks;
+create policy "editors can delete tasks"
+on public.tasks
+for delete
+using (public.can_edit_project_artifacts(project_id));
+
+drop policy if exists "members can read comments" on public.comments;
+create policy "members can read comments"
 on public.comments
 for select
-using (public.is_workspace_member(workspace_id));
+using (public.can_read_project(project_id));
 
-drop policy if exists "members write comments" on public.comments;
-create policy "members write comments"
+drop policy if exists "members can create comments" on public.comments;
+create policy "members can create comments"
 on public.comments
 for insert
-with check (public.is_workspace_member(workspace_id) and author_id = auth.uid());
+with check (
+  created_by = auth.uid()
+  and public.can_read_project(project_id)
+);
 
-drop policy if exists "users read own notifications" on public.notifications;
-create policy "users read own notifications"
-on public.notifications
-for select
-using (recipient_id = auth.uid() or public.is_workspace_member(workspace_id));
+drop policy if exists "comment owners and managers can update comments" on public.comments;
+create policy "comment owners and managers can update comments"
+on public.comments
+for update
+using (created_by = auth.uid() or public.can_manage_project(project_id))
+with check (created_by = auth.uid() or public.can_manage_project(project_id));
 
-drop policy if exists "members queue notifications" on public.notifications;
-create policy "members queue notifications"
-on public.notifications
-for insert
-with check (workspace_id is null or public.is_workspace_member(workspace_id));
+drop policy if exists "comment owners and managers can delete comments" on public.comments;
+create policy "comment owners and managers can delete comments"
+on public.comments
+for delete
+using (created_by = auth.uid() or public.can_manage_project(project_id));
 
-drop policy if exists "members read decisions" on public.decisions;
-create policy "members read decisions"
-on public.decisions
-for select
-using (public.is_workspace_member(workspace_id));
-
-drop policy if exists "members write decisions" on public.decisions;
-create policy "members write decisions"
-on public.decisions
-for insert
-with check (public.is_workspace_member(workspace_id) and author_id = auth.uid());
-
-drop policy if exists "members read activity log" on public.activity_log;
-create policy "members read activity log"
-on public.activity_log
+drop policy if exists "members can read activity logs" on public.activity_logs;
+create policy "members can read activity logs"
+on public.activity_logs
 for select
 using (public.is_workspace_member(workspace_id));
 
-drop policy if exists "members write activity log" on public.activity_log;
-create policy "members write activity log"
-on public.activity_log
+drop policy if exists "members can create activity logs" on public.activity_logs;
+create policy "members can create activity logs"
+on public.activity_logs
 for insert
 with check (public.is_workspace_member(workspace_id));
+
+drop policy if exists "owners and admins can read invitations" on public.invitations;
+create policy "owners and admins can read invitations"
+on public.invitations
+for select
+using (
+  public.has_workspace_role(workspace_id, array['owner', 'admin'])
+  or lower(email) = lower(coalesce(auth.jwt()->>'email', ''))
+);
+
+drop policy if exists "owners and admins can create invitations" on public.invitations;
+create policy "owners and admins can create invitations"
+on public.invitations
+for insert
+with check (
+  invited_by = auth.uid()
+  and public.has_workspace_role(workspace_id, array['owner', 'admin'])
+);
+
+drop policy if exists "owners admins and invited users can update invitations" on public.invitations;
+create policy "owners admins and invited users can update invitations"
+on public.invitations
+for update
+using (
+  public.has_workspace_role(workspace_id, array['owner', 'admin'])
+  or lower(email) = lower(coalesce(auth.jwt()->>'email', ''))
+)
+with check (
+  public.has_workspace_role(workspace_id, array['owner', 'admin'])
+  or lower(email) = lower(coalesce(auth.jwt()->>'email', ''))
+);
+
+do $$
+begin
+  alter publication supabase_realtime add table public.requirements;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.tasks;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.comments;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.activity_logs;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.acceptance_criteria;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.test_cases;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.risks;
+exception when duplicate_object then null;
+end $$;
