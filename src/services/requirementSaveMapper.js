@@ -21,6 +21,27 @@ export function buildRequirementInsert({ projectId, title, input, analysis, crea
   };
 }
 
+export function buildRequirementRpcArgs({ projectId, title, input, analysis }) {
+  const normalized = normalizeAiRequirementResult(analysis);
+
+  return {
+    p_project_id: projectId,
+    p_title: title,
+    p_original_input: input,
+    p_summary: normalized?.summary || analysis?.meta?.summary || title,
+    p_functional: normalized?.functionalRequirements || analysis?.functional || [],
+    p_non_functional: normalized?.nonFunctionalRequirements || [],
+    p_ui: normalized?.uiRequirements || analysis?.ui || [],
+    p_api: normalized?.apiDesign || analysis?.api || [],
+    p_database_schema: normalized?.databaseSchema || analysis?.database || [],
+    p_erd_relations: normalized?.erdRelations || analysis?.relationships || [],
+    p_tasks: normalized?.tasks || [],
+    p_acceptance_criteria: normalized?.acceptanceCriteria || [],
+    p_risks: normalized?.risks || [],
+    p_test_cases: normalized?.testCases || [],
+  };
+}
+
 export function buildRequirementArtifactRows({ requirementId, analysis }) {
   const normalized = normalizeAiRequirementResult(analysis);
 

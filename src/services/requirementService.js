@@ -1,7 +1,7 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient.js";
-import { mapRequirementRecord } from "./mappers.js";
+import { mapRequirementRecord, mapTask } from "./mappers.js";
 import { makeMockId, readMockStore, updateMockStore } from "./mockStore.js";
-import { buildRequirementArtifactRows, buildRequirementInsert } from "./requirementSaveMapper.js";
+import { buildRequirementInsert, buildRequirementRpcArgs } from "./requirementSaveMapper.js";
 
 function getRequirementTitle(input) {
   return input
@@ -31,9 +31,10 @@ export async function getRequirements(projectId) {
 
 export async function createRequirement({ projectId, input, analysis, createdBy }) {
   const title = getRequirementTitle(input);
-  const { row, analysis: aiAnalysis } = buildRequirementInsert({ projectId, title, input, analysis, createdBy });
+  const { analysis: aiAnalysis } = buildRequirementInsert({ projectId, title, input, analysis, createdBy });
 
   if (!isSupabaseConfigured) {
+    const now = new Date().toISOString();
     const requirement = {
       id: makeMockId("requirement"),
       projectId,
@@ -51,39 +52,47 @@ export async function createRequirement({ projectId, input, analysis, createdBy 
       acceptanceCriteria: aiAnalysis?.acceptanceCriteria || [],
       testCases: aiAnalysis?.testCases || [],
       createdBy,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
       ...analysis,
     };
+    const savedTasks = (aiAnalysis?.tasks || []).map((task) => ({
+      id: makeMockId("task"),
+      projectId,
+      requirementId: requirement.id,
+      title: task.title,
+      description: task.description || "AI 요구사항 분석에서 생성된 작업입니다.",
+      status: task.status === "in_progress" ? "In Progress" : task.status === "done" ? "Done" : "Todo",
+      priority: task.priority === "high" ? "High" : task.priority === "low" ? "Low" : "Medium",
+      assigneeId: createdBy,
+      assignee: "지원",
+      source: "AI 요구사항 분석",
+      createdBy,
+      createdAt: now,
+    }));
 
     updateMockStore((store) => ({
       ...store,
       requirements: [requirement, ...store.requirements],
+      tasks: [...store.tasks, ...savedTasks],
     }));
 
-    return requirement;
+    return { ...requirement, savedTasks };
   }
 
-  const { data, error } = await supabase
-    .from("requirements")
-    .insert(row)
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc(
+    "create_requirement_analysis",
+    buildRequirementRpcArgs({ projectId, title, input, analysis })
+  );
 
   if (error) throw error;
 
-  const artifactRows = buildRequirementArtifactRows({ requirementId: data.id, analysis: aiAnalysis });
-  const insertions = [];
-  if (artifactRows.acceptanceCriteria.length) insertions.push(supabase.from("acceptance_criteria").insert(artifactRows.acceptanceCriteria));
-  if (artifactRows.risks.length) insertions.push(supabase.from("risks").insert(artifactRows.risks));
-  if (artifactRows.testCases.length) insertions.push(supabase.from("test_cases").insert(artifactRows.testCases));
-
-  const insertionResults = await Promise.all(insertions);
-  const insertionError = insertionResults.find((result) => result.error)?.error;
-  if (insertionError) throw insertionError;
+  const requirementRow = data?.requirement;
+  const savedTasks = (data?.tasks || []).map(mapTask);
 
   return {
-    ...mapRequirementRecord(data),
+    ...mapRequirementRecord(requirementRow),
     ...aiAnalysis,
+    savedTasks,
   };
 }
 

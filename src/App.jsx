@@ -74,10 +74,25 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
   const [realtimeStatus, setRealtimeStatus] = useState(backendMode === "supabase" ? "준비 중" : "mock");
+  const [presenceMembers, setPresenceMembers] = useState([]);
   const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId) || workspaces[0];
   const workspaceMembers = team
     .map((member) => normalizeMember(member, activeWorkspace?.id))
     .filter((member) => member.workspaceId === activeWorkspace?.id);
+  const rightPanelTeam = presenceMembers.length
+    ? [
+        ...workspaceMembers.map((member) => {
+          const presence = presenceMembers.find(
+            (item) => item.userId === member.userId || item.email === member.email
+          );
+          return presence ? { ...member, ...presence, id: member.id } : { ...member, online: false, editing: "" };
+        }),
+        ...presenceMembers.filter(
+          (presence) =>
+            !workspaceMembers.some((member) => member.userId === presence.userId || member.email === presence.email)
+        ),
+      ]
+    : workspaceMembers;
   const currentUser =
     workspaceMembers.find((member) => member.userId === authUser?.id) ||
     workspaceMembers.find((member) => member.userId === currentUserId) ||
@@ -219,23 +234,45 @@ export default function App() {
   }, [activeWorkspaceId]);
 
   useEffect(() => {
+    if (backendMode !== "supabase") {
+      setRealtimeStatus("mock");
+      setPresenceMembers((current) => (current.length ? [] : current));
+      return () => {};
+    }
+
     if (!activeWorkspace?.id || !project?.id) {
       setRealtimeStatus(backendMode === "supabase" ? "대기 중" : "mock");
+      setPresenceMembers((current) => (current.length ? [] : current));
       return () => {};
     }
 
     return subscribeToProjectRealtime({
       workspaceId: activeWorkspace.id,
       projectId: project.id,
+      currentUser,
+      activeView: activeTab || activeNav,
       onStatusChange: setRealtimeStatus,
+      onPresenceChange: setPresenceMembers,
       onChange: () => refreshWorkspaceData(activeWorkspace.id, project.id),
     });
-  }, [activeWorkspace?.id, backendMode, project?.id, refreshWorkspaceData]);
+  }, [
+    activeTab,
+    activeNav,
+    activeWorkspace?.id,
+    backendMode,
+    currentUser?.avatarColor,
+    currentUser?.email,
+    currentUser?.name,
+    currentUser?.role,
+    currentUser?.userId,
+    project?.id,
+    refreshWorkspaceData,
+  ]);
 
-  const addActivity = (action, target, actor = currentUser?.name || "시스템") => {
+  const addActivity = (action, target, actor = currentUser?.name || "시스템", options = {}) => {
     const activity = createActivity(actor, action, target);
     setActivities([activity, ...activities].slice(0, 40));
-    if (activeWorkspace?.id) {
+    if (activeWorkspace?.id && options.persist !== false) {
       createActivityLog({
         workspaceId: activeWorkspace.id,
         projectId: project?.id,
@@ -320,7 +357,11 @@ export default function App() {
     if (!invite) return;
     const name = invite.email.split("@")[0];
     try {
-      await persistAcceptInvitation({ inviteId, userId: authUser?.id || currentUser?.userId || currentUserId });
+      await persistAcceptInvitation({
+        inviteId,
+        userId: authUser?.id || currentUser?.userId || currentUserId,
+        userEmail: authUser?.email || currentUser?.email,
+      });
       setInvitations(
         invitations.map((item) => (item.id === inviteId ? { ...item, status: "Accepted" } : item))
       );
@@ -329,7 +370,7 @@ export default function App() {
         {
           id: `wm-${Date.now()}`,
           workspaceId: invite.workspaceId,
-          userId: `u-${Date.now()}`,
+          userId: authUser?.id || currentUser?.userId || currentUserId,
           name,
           email: invite.email,
           role: invite.role,
@@ -468,22 +509,17 @@ export default function App() {
       setRequirements(analysisWithId);
 
       const existingTitles = new Set(tasks.map((task) => task.title.trim().toLowerCase()));
-      const newGeneratedTasks = (analysis.tasks || []).filter(
+      const savedTasks = (savedRequirement.savedTasks || []).filter(
         (task) => !existingTitles.has(task.title.trim().toLowerCase())
       );
 
-      if (newGeneratedTasks.length) {
-        const createdTasks = await createTasksFromRequirement({
-          projectId: project.id,
-          requirementId: savedRequirement.id,
-          tasks: newGeneratedTasks,
-          createdBy: authUser?.id || currentUser?.userId || currentUserId,
-        });
-
-        setTasks([...tasks, ...createdTasks]);
+      if (savedTasks.length) {
+        setTasks([...tasks, ...savedTasks]);
       }
 
-      addActivity("요구사항을 분석하고 저장했습니다", analysis.meta?.summary || "AI 분석 결과");
+      addActivity("요구사항을 분석하고 저장했습니다", analysis.meta?.summary || "AI 분석 결과", undefined, {
+        persist: false,
+      });
     } catch (error) {
       reportBackendError(error);
     }
@@ -649,7 +685,7 @@ export default function App() {
       onNavigate={navigate}
       project={project}
       tasks={tasks}
-      team={workspaceMembers}
+      team={rightPanelTeam}
       activeWorkspace={activeWorkspace}
       currentUser={currentUser}
       currentRole={currentRole}

@@ -1,4 +1,4 @@
-import { MailPlus, Plus, ShieldAlert, Trash2 } from "lucide-react";
+import { CheckCircle2, Copy, MailPlus, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/Button.jsx";
 import { FormField, inputClassName } from "../../components/FormField.jsx";
@@ -36,6 +36,17 @@ function ConfirmationModal({ open, title, description, onCancel, onConfirm }) {
   );
 }
 
+function buildInviteLink(invite) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("invite", invite.token || invite.id);
+  return url.toString();
+}
+
+function formatDate(date) {
+  if (!date) return "만료일 미정";
+  return new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric" }).format(new Date(date));
+}
+
 export function TeamTab({
   workspaces,
   activeWorkspace,
@@ -46,11 +57,13 @@ export function TeamTab({
   onInviteMember,
   onAcceptInvite,
   onUpdateMemberRole,
+  currentUser,
   currentRole,
 }) {
   const [invite, setInvite] = useState({ email: "", role: "Member" });
   const [workspaceName, setWorkspaceName] = useState("");
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [inviteFeedback, setInviteFeedback] = useState("");
   const canInvite = canUserPerformAction(currentRole, "member.invite");
   const canManage = canUserPerformAction(currentRole, "member.manage");
   const canDeleteWorkspace = canUserPerformAction(currentRole, "workspace.delete");
@@ -60,6 +73,7 @@ export function TeamTab({
     if (!invite.email.trim() || !canInvite) return;
     onInviteMember({ email: invite.email.trim(), role: invite.role });
     setInvite({ email: "", role: "Member" });
+    setInviteFeedback("초대를 만들었습니다. 대기 목록에서 초대 링크를 복사할 수 있습니다.");
   };
 
   const createWorkspace = (event) => {
@@ -68,6 +82,18 @@ export function TeamTab({
     onCreateWorkspace(workspaceName);
     setWorkspaceName("");
   };
+
+  const copyInviteLink = async (pendingInvite) => {
+    const link = buildInviteLink(pendingInvite);
+    try {
+      await navigator.clipboard.writeText(link);
+      setInviteFeedback(`${pendingInvite.email} 초대 링크를 복사했습니다.`);
+    } catch {
+      setInviteFeedback(`초대 링크: ${link}`);
+    }
+  };
+
+  const currentUserEmail = currentUser?.email?.toLowerCase();
 
   return (
     <div className="space-y-6 p-6">
@@ -125,7 +151,7 @@ export function TeamTab({
           <section className="rounded-lg border border-surface-line bg-white p-5">
             <h2 className="text-lg font-semibold text-ink-strong">팀원 초대</h2>
             <p className="mt-1 text-sm leading-6 text-ink-muted">
-              이메일로 초대하고 역할을 지정합니다. 초대는 대기 상태로 표시됩니다.
+              이메일로 초대를 만들고 역할을 지정합니다. 실제 이메일 발송은 백엔드 연결 후 붙일 수 있도록 링크 기반으로 준비했습니다.
             </p>
 
             <form className="mt-5 space-y-4" onSubmit={inviteMember}>
@@ -159,6 +185,12 @@ export function TeamTab({
                 초대하기
               </Button>
             </form>
+            {inviteFeedback ? (
+              <p className="mt-4 flex items-center gap-2 text-sm text-emerald-700">
+                <CheckCircle2 size={15} aria-hidden="true" />
+                {inviteFeedback}
+              </p>
+            ) : null}
           </section>
         </div>
 
@@ -208,22 +240,36 @@ export function TeamTab({
             </div>
             {invitations.length ? (
               <div className="divide-y divide-surface-line">
-                {invitations.map((invite) => (
-                  <div key={invite.id} className="flex items-center justify-between gap-4 px-5 py-4">
-                    <div>
-                      <p className="font-medium text-ink-strong">{invite.email}</p>
-                      <p className="text-sm text-ink-muted">{getRoleLabel(invite.role)} · {invite.invitedBy} 초대</p>
+                {invitations.map((pendingInvite) => {
+                  const isPending = pendingInvite.status === "Pending";
+                  const canAcceptOwnInvite =
+                    isPending && currentUserEmail && pendingInvite.email.toLowerCase() === currentUserEmail;
+
+                  return (
+                    <div key={pendingInvite.id} className="flex items-center justify-between gap-4 px-5 py-4">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-ink-strong">{pendingInvite.email}</p>
+                        <p className="text-sm text-ink-muted">
+                          {getRoleLabel(pendingInvite.role)} · {formatDate(pendingInvite.expiresAt)}까지 유효
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <StatusBadge value={isPending ? "대기 중" : pendingInvite.status === "Accepted" ? "활성" : "만료"} />
+                        {isPending ? (
+                          <Button variant="secondary" onClick={() => copyInviteLink(pendingInvite)}>
+                            <Copy size={15} aria-hidden="true" />
+                            링크 복사
+                          </Button>
+                        ) : null}
+                        {canAcceptOwnInvite ? (
+                          <Button variant="primary" onClick={() => onAcceptInvite(pendingInvite.id)}>
+                            내 초대 수락
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <StatusBadge value={invite.status === "Pending" ? "대기 중" : "활성"} />
-                      {invite.status === "Pending" ? (
-                        <Button variant="secondary" onClick={() => onAcceptInvite(invite.id)}>
-                          수락 처리
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="p-6 text-center text-sm text-ink-muted">대기 중인 초대가 없습니다.</div>
@@ -235,7 +281,7 @@ export function TeamTab({
       <ConfirmationModal
         open={confirmDeleteOpen}
         title="워크스페이스 삭제"
-        description="실제 삭제 기능은 백엔드 연결 후 활성화됩니다. 지금은 위험 작업 확인 플로우만 보여줍니다."
+        description="삭제 API가 연결되면 워크스페이스의 프로젝트, 작업, 댓글이 함께 삭제됩니다. 지금은 위험 작업 확인 흐름만 보여줍니다."
         onCancel={() => setConfirmDeleteOpen(false)}
         onConfirm={() => setConfirmDeleteOpen(false)}
       />

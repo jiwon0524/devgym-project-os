@@ -122,9 +122,19 @@ create table if not exists public.invitations (
   email text not null,
   role text not null check (role in ('admin', 'member', 'viewer')),
   status text not null default 'pending' check (status in ('pending', 'accepted', 'expired')),
+  invite_token text not null default encode(gen_random_bytes(16), 'hex'),
+  expires_at timestamptz not null default (now() + interval '7 days'),
   invited_by uuid not null references public.profiles(id) on delete restrict,
   created_at timestamptz not null default now()
 );
+
+alter table public.invitations add column if not exists invite_token text;
+alter table public.invitations add column if not exists expires_at timestamptz not null default (now() + interval '7 days');
+update public.invitations
+set invite_token = encode(gen_random_bytes(16), 'hex')
+where invite_token is null;
+alter table public.invitations alter column invite_token set default encode(gen_random_bytes(16), 'hex');
+alter table public.invitations alter column invite_token set not null;
 
 create index if not exists workspace_members_workspace_id_idx on public.workspace_members(workspace_id);
 create index if not exists workspace_members_user_id_idx on public.workspace_members(user_id);
@@ -138,6 +148,7 @@ create index if not exists comments_project_id_idx on public.comments(project_id
 create index if not exists activity_logs_workspace_id_idx on public.activity_logs(workspace_id);
 create index if not exists invitations_workspace_id_idx on public.invitations(workspace_id);
 create index if not exists invitations_email_idx on public.invitations(lower(email));
+create unique index if not exists invitations_invite_token_idx on public.invitations(invite_token);
 
 alter table public.profiles enable row level security;
 alter table public.workspaces enable row level security;
@@ -294,6 +305,211 @@ set search_path = public
 as $$
   select public.has_workspace_role(public.project_workspace(target_project), array['owner', 'admin']);
 $$;
+
+create or replace function public.create_requirement_analysis(
+  p_project_id uuid,
+  p_title text,
+  p_original_input text,
+  p_summary text,
+  p_functional jsonb,
+  p_non_functional jsonb,
+  p_ui jsonb,
+  p_api jsonb,
+  p_database_schema jsonb,
+  p_erd_relations jsonb,
+  p_tasks jsonb,
+  p_acceptance_criteria jsonb,
+  p_risks jsonb,
+  p_test_cases jsonb
+)
+returns jsonb
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_requirement public.requirements;
+  v_workspace_id uuid;
+  v_tasks jsonb := '[]'::jsonb;
+begin
+  select workspace_id
+  into v_workspace_id
+  from public.projects
+  where id = p_project_id;
+
+  if v_workspace_id is null then
+    raise exception 'Project not found';
+  end if;
+
+  insert into public.requirements (
+    project_id,
+    title,
+    original_input,
+    summary,
+    functional,
+    non_functional,
+    ui,
+    api,
+    database_schema,
+    erd_relations,
+    created_by
+  )
+  values (
+    p_project_id,
+    p_title,
+    p_original_input,
+    p_summary,
+    coalesce(p_functional, '[]'::jsonb),
+    coalesce(p_non_functional, '[]'::jsonb),
+    coalesce(p_ui, '[]'::jsonb),
+    coalesce(p_api, '[]'::jsonb),
+    coalesce(p_database_schema, '[]'::jsonb),
+    coalesce(p_erd_relations, '[]'::jsonb),
+    auth.uid()
+  )
+  returning * into v_requirement;
+
+  insert into public.acceptance_criteria (requirement_id, content)
+  select v_requirement.id, value
+  from jsonb_array_elements_text(coalesce(p_acceptance_criteria, '[]'::jsonb));
+
+  insert into public.risks (requirement_id, content, severity)
+  select
+    v_requirement.id,
+    risk.content,
+    case when risk.severity in ('low', 'medium', 'high') then risk.severity else 'medium' end
+  from jsonb_to_recordset(coalesce(p_risks, '[]'::jsonb)) as risk(content text, severity text);
+
+  insert into public.test_cases (requirement_id, title, given_text, when_text, then_text)
+  select
+    v_requirement.id,
+    coalesce(test_case.title, '테스트 케이스'),
+    coalesce(test_case."given", ''),
+    coalesce(test_case."when", ''),
+    coalesce(test_case."then", '')
+  from jsonb_to_recordset(coalesce(p_test_cases, '[]'::jsonb)) as test_case(
+    title text,
+    "given" text,
+    "when" text,
+    "then" text
+  );
+
+  with inserted_tasks as (
+    insert into public.tasks (
+      project_id,
+      requirement_id,
+      title,
+      description,
+      status,
+      priority,
+      assignee_id,
+      created_by
+    )
+    select
+      p_project_id,
+      v_requirement.id,
+      task.title,
+      coalesce(task.description, 'AI 요구사항 분석에서 생성된 작업입니다.'),
+      case when task.status in ('todo', 'in_progress', 'done') then task.status else 'todo' end,
+      case when task.priority in ('low', 'medium', 'high') then task.priority else 'medium' end,
+      auth.uid(),
+      auth.uid()
+    from jsonb_to_recordset(coalesce(p_tasks, '[]'::jsonb)) as task(
+      title text,
+      description text,
+      priority text,
+      status text
+    )
+    where coalesce(task.title, '') <> ''
+    returning *
+  )
+  select coalesce(jsonb_agg(to_jsonb(inserted_tasks)), '[]'::jsonb)
+  into v_tasks
+  from inserted_tasks;
+
+  insert into public.activity_logs (workspace_id, project_id, actor_id, action, target_type, target_id)
+  values (
+    v_workspace_id,
+    p_project_id,
+    auth.uid(),
+    '요구사항을 분석하고 저장했습니다',
+    'requirement',
+    v_requirement.id
+  );
+
+  return jsonb_build_object(
+    'requirement', to_jsonb(v_requirement),
+    'tasks', v_tasks
+  );
+end;
+$$;
+
+revoke all on function public.create_requirement_analysis(
+  uuid, text, text, text, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb
+) from anon;
+revoke all on function public.create_requirement_analysis(
+  uuid, text, text, text, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb
+) from public;
+grant execute on function public.create_requirement_analysis(
+  uuid, text, text, text, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb
+) to authenticated;
+
+create or replace function public.accept_workspace_invitation(p_invite_id uuid)
+returns public.invitations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_invite public.invitations;
+  v_email text := lower(coalesce(auth.jwt()->>'email', ''));
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  select *
+  into v_invite
+  from public.invitations
+  where id = p_invite_id
+  for update;
+
+  if not found then
+    raise exception 'Invitation not found';
+  end if;
+
+  if v_invite.status <> 'pending' then
+    raise exception 'Invitation is already processed';
+  end if;
+
+  if v_invite.expires_at < now() then
+    update public.invitations
+    set status = 'expired'
+    where id = v_invite.id
+    returning * into v_invite;
+    raise exception 'Invitation expired';
+  end if;
+
+  if lower(v_invite.email) <> v_email then
+    raise exception 'Invitation email does not match current user';
+  end if;
+
+  insert into public.workspace_members (workspace_id, user_id, role)
+  values (v_invite.workspace_id, auth.uid(), v_invite.role)
+  on conflict (workspace_id, user_id)
+  do nothing;
+
+  update public.invitations
+  set status = 'accepted'
+  where id = v_invite.id
+  returning * into v_invite;
+
+  return v_invite;
+end;
+$$;
+
+revoke all on function public.accept_workspace_invitation(uuid) from anon;
+revoke all on function public.accept_workspace_invitation(uuid) from public;
+grant execute on function public.accept_workspace_invitation(uuid) to authenticated;
 
 drop policy if exists "profiles can read own profile" on public.profiles;
 create policy "profiles can read own profile"

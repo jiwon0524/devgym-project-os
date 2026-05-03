@@ -89,6 +89,7 @@ export function ProjectWorkspace({
             onInviteMember={onInviteMember}
             onAcceptInvite={onAcceptInvite}
             onUpdateMemberRole={onUpdateMemberRole}
+            currentUser={currentUser}
             currentRole={currentRole}
           />
         );

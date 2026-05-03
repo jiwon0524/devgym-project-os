@@ -2,6 +2,7 @@ import { analyzeRequirement } from "../features/requirements/analyzeRequirement.
 import { legacyAnalysisToAiResult, normalizeAiRequirementResult } from "../features/requirements/aiRequirementUtils.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const isDevFallbackEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_AI_FALLBACK === "true";
 
 function buildAiEndpoint() {
   return `${API_BASE_URL}/api/ai/analyze-requirement`;
@@ -43,17 +44,22 @@ export async function analyzeRequirementWithFallback({ projectId, input }) {
   try {
     return await analyzeRequirementWithBackend({ projectId, input });
   } catch (error) {
+    if (!isDevFallbackEnabled) {
+      throw error;
+    }
+
     const fallback = legacyAnalysisToAiResult(analyzeRequirement(input));
     return {
       ...fallback,
       meta: {
         ...fallback.meta,
         provider: "local-fallback",
+        fallback: true,
         input,
         warning:
           error.code === "OPENAI_KEY_MISSING"
-            ? "AI 서버 키가 없어 로컬 분석으로 임시 실행했습니다."
-            : "AI 서버 연결에 실패해 로컬 분석으로 임시 실행했습니다.",
+            ? "개발 모드라 OpenAI 키 없이 로컬 분석을 표시했습니다. 실제 AI 결과가 아니므로 운영 저장 전 API 연결을 확인하세요."
+            : "개발 모드라 AI 서버 오류 대신 로컬 분석을 표시했습니다. 실제 AI 결과가 아니므로 운영 저장 전 API 연결을 확인하세요.",
       },
     };
   }

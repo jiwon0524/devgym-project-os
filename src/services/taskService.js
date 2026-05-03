@@ -131,7 +131,7 @@ export async function createTasksFromRequirement({ projectId, requirementId, tas
     requirement_id: requirementId || null,
     title: task.title,
     description: task.description || "AI 요구사항 분석에서 생성된 작업입니다.",
-    status: "todo",
+    status: toDbTaskStatus(task.status || "Todo"),
     priority: toDbPriority(task.priority || "Medium"),
     assignee_id: createdBy || null,
     created_by: createdBy,

@@ -85,6 +85,8 @@ export const defaultInvitations = [
     email: "new.member@company.com",
     role: "Member",
     status: "Pending",
+    token: "mock-invite-devgym-member",
+    expiresAt: "2026-05-10T11:30:00.000Z",
     invitedBy: "지원",
     createdAt: "2026-05-03T11:30:00.000Z",
   },

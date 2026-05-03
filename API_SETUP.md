@@ -28,6 +28,7 @@ OPENAI_MODEL=gpt-5.4-mini
 관련 파일:
 
 ```txt
+supabase-schema.sql
 backend/routes/aiRoutes.js
 backend/services/aiService.js
 backend/utils/jsonValidator.js
@@ -78,6 +79,7 @@ src/services/realtimeService.js
 
 ```bash
 VITE_API_BASE_URL=
+VITE_ENABLE_AI_FALLBACK=false
 ```
 
 배포 환경에서 프론트엔드와 백엔드 주소가 다르면 아래처럼 설정합니다.
@@ -125,6 +127,19 @@ http://127.0.0.1:5173/
 
 ## 6. API 키가 없을 때
 
-- OpenAI 키가 없거나 API 서버가 꺼져 있으면 로컬 fallback 분석으로 동작합니다.
+- 개발 모드에서는 OpenAI 키가 없거나 API 서버가 꺼져 있으면 로컬 fallback 분석을 표시할 수 있습니다.
+- 운영 배포에서는 `VITE_ENABLE_AI_FALLBACK=false`를 유지해서 실제 AI 실패가 mock 결과로 숨겨지지 않게 해야 합니다.
 - Supabase 환경변수가 없으면 mock/localStorage 모드로 동작합니다.
 - 앱은 중단되지 않고, 화면에 안내 메시지를 보여줍니다.
+
+## 7. 실제 저장에 필요한 Supabase RPC
+
+`supabase-schema.sql`에는 아래 RPC가 포함되어 있습니다.
+
+```txt
+create_requirement_analysis
+accept_workspace_invitation
+```
+
+- `create_requirement_analysis`는 요구사항, 인수 조건, 리스크, 테스트 케이스, 생성 작업, 활동 로그를 하나의 DB 트랜잭션으로 저장합니다.
+- `accept_workspace_invitation`은 로그인 이메일과 초대 이메일이 일치할 때만 멤버 추가와 초대 상태 변경을 처리합니다.

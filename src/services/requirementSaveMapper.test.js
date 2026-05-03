@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildRequirementArtifactRows,
   buildRequirementInsert,
+  buildRequirementRpcArgs,
   buildTaskRowsFromAiResult,
 } from "./requirementSaveMapper.js";
 
@@ -61,4 +62,19 @@ test("task creation from AI result builds task rows", () => {
   assert.equal(rows[0].title, "프로젝트 생성 API");
   assert.equal(rows[0].priority, "high");
   assert.equal(rows[0].status, "todo");
+});
+
+test("requirement save flow builds transactional RPC args", () => {
+  const args = buildRequirementRpcArgs({
+    projectId: "project-1",
+    title: "팀 프로젝트",
+    input: "팀 프로젝트 만들기",
+    analysis,
+  });
+
+  assert.equal(args.p_project_id, "project-1");
+  assert.equal(args.p_title, "팀 프로젝트");
+  assert.equal(args.p_tasks[0].title, "프로젝트 생성 API");
+  assert.equal(args.p_acceptance_criteria[0], "프로젝트 생성 후 목록에 표시된다.");
+  assert.equal(args.p_test_cases[0].then, "새 프로젝트가 저장된다.");
 });

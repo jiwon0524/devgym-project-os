@@ -110,6 +110,8 @@ export async function inviteMember({ workspaceId, email, role, invitedBy }) {
       email,
       role,
       status: "Pending",
+      token: `mock-${globalThis.crypto?.randomUUID?.() || makeMockId("token")}`,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       invitedBy: invitedBy || "지원",
       createdAt: new Date().toISOString(),
     };
@@ -137,8 +139,18 @@ export async function inviteMember({ workspaceId, email, role, invitedBy }) {
   return mapInvitation(data);
 }
 
-export async function acceptInvitation({ inviteId, userId }) {
+export async function acceptInvitation({ inviteId, userId, userEmail }) {
   if (!isSupabaseConfigured) {
+    const mockUser = getMockUser();
+    const nextEmail = userEmail || mockUser.email;
+    const existingInvite = readMockStore().invitations.find((item) => item.id === inviteId);
+    if (!existingInvite) throw new Error("초대를 찾을 수 없습니다.");
+    if (existingInvite.status !== "Pending") throw new Error("이미 처리된 초대입니다.");
+    if (existingInvite.expiresAt && new Date(existingInvite.expiresAt) < new Date()) throw new Error("만료된 초대입니다.");
+    if (existingInvite.email.toLowerCase() !== nextEmail.toLowerCase()) {
+      throw new Error("초대받은 이메일 계정으로만 수락할 수 있습니다.");
+    }
+
     const store = updateMockStore((current) => {
       const invite = current.invitations.find((item) => item.id === inviteId);
       if (!invite) return current;
@@ -153,8 +165,8 @@ export async function acceptInvitation({ inviteId, userId }) {
           {
             id: makeMockId("wm"),
             workspaceId: invite.workspaceId,
-            userId: makeMockId("user"),
-            name: invite.email.split("@")[0],
+            userId: userId || makeMockId("user"),
+            name: nextEmail.split("@")[0],
             email: invite.email,
             role: invite.role,
             status: "Active",
@@ -169,28 +181,7 @@ export async function acceptInvitation({ inviteId, userId }) {
     return store.invitations.find((item) => item.id === inviteId);
   }
 
-  const { data: invite, error: inviteError } = await supabase
-    .from("invitations")
-    .select("*")
-    .eq("id", inviteId)
-    .single();
-
-  if (inviteError) throw inviteError;
-
-  const { error: memberError } = await supabase.from("workspace_members").insert({
-    workspace_id: invite.workspace_id,
-    user_id: userId,
-    role: invite.role,
-  });
-
-  if (memberError && memberError.code !== "23505") throw memberError;
-
-  const { data, error } = await supabase
-    .from("invitations")
-    .update({ status: "accepted" })
-    .eq("id", inviteId)
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc("accept_workspace_invitation", { p_invite_id: inviteId });
 
   if (error) throw error;
   return mapInvitation(data);
