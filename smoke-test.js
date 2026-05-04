@@ -8,6 +8,16 @@ import { chromium } from "playwright";
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(rootDir, "dist");
 
+const ko = {
+  authRequired: "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4",
+  syncError: "\uB370\uC774\uD130 \uB3D9\uAE30\uD654 \uC624\uB958",
+  staleMockProject:
+    "\uD611\uC5C5 UI \uC810\uAC80 \uD504\uB85C\uC81D\uD2B8",
+  mainNav: "\uC8FC\uC694 \uBA54\uB274",
+  loginSyncBanner:
+    "\uB85C\uADF8\uC778 \uD6C4 \uB3D9\uAE30\uD654 \uC2DC\uC791",
+};
+
 const mimeTypes = {
   ".html": "text/html",
   ".js": "text/javascript",
@@ -18,8 +28,11 @@ const mimeTypes = {
 
 function createStaticServer() {
   return createServer(async (request, response) => {
-    const requestPath = request.url === "/" ? "/index.html" : request.url.split("?")[0];
-    const filePath = path.normalize(path.join(distDir, decodeURIComponent(requestPath)));
+    const requestPath =
+      request.url === "/" ? "/index.html" : request.url.split("?")[0];
+    const filePath = path.normalize(
+      path.join(distDir, decodeURIComponent(requestPath)),
+    );
 
     if (!filePath.startsWith(distDir)) {
       response.writeHead(403);
@@ -30,7 +43,8 @@ function createStaticServer() {
     try {
       const content = await readFile(filePath);
       response.writeHead(200, {
-        "Content-Type": mimeTypes[path.extname(filePath)] || "application/octet-stream",
+        "Content-Type":
+          mimeTypes[path.extname(filePath)] || "application/octet-stream",
       });
       response.end(content);
     } catch {
@@ -39,6 +53,14 @@ function createStaticServer() {
       response.end(fallback);
     }
   });
+}
+
+async function isVisible(locator) {
+  try {
+    return await locator.isVisible({ timeout: 1500 });
+  } catch {
+    return false;
+  }
 }
 
 async function main() {
@@ -55,7 +77,9 @@ async function main() {
     "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
     "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
   ];
-  const executablePath = browserPaths.find((browserPath) => existsSync(browserPath));
+  const executablePath = browserPaths.find((browserPath) =>
+    existsSync(browserPath),
+  );
   const browser = await chromium.launch({
     executablePath,
     headless: true,
@@ -73,45 +97,45 @@ async function main() {
     await page.evaluate(() => localStorage.clear());
     await page.reload({ waitUntil: "networkidle" });
 
-    await page.getByRole("button", { name: /프로젝트 만들기/i }).first().click();
-    await page.getByLabel("프로젝트 이름").fill("DevGym 로그인 개선");
-    await page
-      .getByLabel("설명")
-      .fill("디자인과 개발이 바로 이해할 수 있게 로그인 요구사항을 정리합니다.");
-    await page.getByRole("button", { name: /^프로젝트 만들기$/i }).click();
-
-    await page.getByRole("main").getByRole("button", { name: /^요구사항$/i }).click();
-    await page.getByRole("button", { name: /분석하기/i }).click();
-    await page.locator('button:has-text("요구사항")').last().click();
-    const requirementSections = await page.locator("section", { hasText: "기능 요구사항" }).count();
-    await page.getByRole("button", { name: "DB/ERD" }).click();
-    const erdVisible = await page.getByRole("heading", { name: "users" }).isVisible();
-    await page.getByRole("button", { name: /작업 보드로 변환/i }).click();
-    const generatedTaskAdded = await page.getByRole("heading", { name: "작업 목록" }).isVisible();
-
-    await page.getByRole("main").getByRole("button", { name: /^팀$/i }).click();
-    await page.getByLabel("이메일").fill("collab@devgym.dev");
-    await page.getByRole("button", { name: /^초대하기$/i }).click();
-    const inviteVisible = await page.getByText("collab@devgym.dev", { exact: true }).isVisible();
-
-    await page.getByRole("main").getByRole("button", { name: /^활동$/i }).click();
+    const authGateVisible = await isVisible(
+      page.getByRole("heading", { name: ko.authRequired }),
+    );
+    const syncErrorVisible = await isVisible(page.getByText(ko.syncError));
+    const staleMockProjectVisible = await isVisible(
+      page.getByText(ko.staleMockProject),
+    );
+    const projectOsVisible = await isVisible(
+      page.getByText("ProjectOS", { exact: true }),
+    );
+    const sidebarVisible = await isVisible(
+      page.getByRole("navigation", { name: ko.mainNav }),
+    );
+    const loginSyncBannerVisible = await isVisible(
+      page.getByText(ko.loginSyncBanner),
+    );
 
     const result = {
       title: await page.title(),
-      sidebarVisible: await page.getByText("ProjectOS", { exact: true }).isVisible(),
-      workspaceVisible: await page.getByText("프로젝트 워크스페이스").isVisible(),
-      requirementSections,
-      erdVisible,
-      generatedTaskAdded,
-      inviteVisible,
-      activityVisible: await page.getByText("프로젝트 활동 기록").isVisible(),
-      tasksNavVisible: await page.getByRole("button", { name: /^내 작업$/i }).isVisible(),
+      projectOsVisible,
+      sidebarVisible,
+      authGateVisible,
+      syncErrorVisible,
+      staleMockProjectVisible,
+      loginSyncBannerVisible,
       errors,
     };
 
     console.log(JSON.stringify(result, null, 2));
 
-    if (errors.length) {
+    if (
+      !projectOsVisible ||
+      !sidebarVisible ||
+      !authGateVisible ||
+      !loginSyncBannerVisible ||
+      syncErrorVisible ||
+      staleMockProjectVisible ||
+      errors.length
+    ) {
       process.exitCode = 1;
     }
   } finally {
