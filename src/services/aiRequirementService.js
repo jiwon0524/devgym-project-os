@@ -1,5 +1,6 @@
 import { analyzeRequirement } from "../features/requirements/analyzeRequirement.js";
 import { legacyAnalysisToAiResult, normalizeAiRequirementResult } from "../features/requirements/aiRequirementUtils.js";
+import { getCurrentSession, isSupabaseConfigured } from "../lib/supabaseClient.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const isDevFallbackEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_AI_FALLBACK === "true";
@@ -9,10 +10,18 @@ function buildAiEndpoint() {
 }
 
 export async function analyzeRequirementWithBackend({ projectId, input }) {
+  const session = await getCurrentSession();
+  if (isSupabaseConfigured && !session?.access_token) {
+    const error = new Error("로그인 후 AI 분석을 사용할 수 있습니다.");
+    error.code = "AUTH_REQUIRED";
+    throw error;
+  }
+
   const response = await fetch(buildAiEndpoint(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
     },
     body: JSON.stringify({ projectId, input }),
   });

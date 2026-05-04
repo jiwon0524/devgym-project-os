@@ -1,4 +1,6 @@
 import { analyzeRequirementWithAi } from "../services/aiService.js";
+import { authorizeProjectAccess, getBearerToken } from "../services/supabaseAuthService.js";
+import { assertRateLimit } from "../utils/rateLimiter.js";
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
@@ -31,6 +33,10 @@ export async function handleAiRoutes(request, response) {
 
   try {
     const body = await readJsonBody(request);
+    const token = getBearerToken(request);
+    const { user } = await authorizeProjectAccess({ token, projectId: body.projectId });
+    assertRateLimit({ key: `ai:${user.id}` });
+
     const data = await analyzeRequirementWithAi({
       projectId: body.projectId,
       input: body.input,
@@ -39,12 +45,13 @@ export async function handleAiRoutes(request, response) {
     sendJson(response, 200, { success: true, data });
   } catch (error) {
     const isMissingKey = error.message.includes("OPENAI_API_KEY");
-    sendJson(response, isMissingKey ? 503 : 400, {
+    const statusCode = error.statusCode || (isMissingKey ? 503 : 400);
+    sendJson(response, statusCode, {
       success: false,
       error: isMissingKey
         ? "AI 서버 키가 설정되지 않았습니다. OPENAI_API_KEY를 backend 환경변수로 설정하세요."
         : error.message,
-      code: isMissingKey ? "OPENAI_KEY_MISSING" : "AI_ANALYSIS_FAILED",
+      code: isMissingKey ? "OPENAI_KEY_MISSING" : error.code || "AI_ANALYSIS_FAILED",
     });
   }
 

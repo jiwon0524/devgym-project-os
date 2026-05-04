@@ -17,6 +17,8 @@ AI 요구사항 분석에 사용합니다.
 ```bash
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_MODEL=gpt-5.4-mini
+AI_RATE_LIMIT_MAX=10
+AI_RATE_LIMIT_WINDOW_MS=60000
 ```
 
 주의:
@@ -24,6 +26,8 @@ OPENAI_MODEL=gpt-5.4-mini
 - `OPENAI_API_KEY`는 절대 프론트엔드 코드에 넣으면 안 됩니다.
 - 이 키는 `backend/server.js`에서만 읽습니다.
 - 프론트엔드는 `/api/ai/analyze-requirement`로 요청하고, Vite proxy가 백엔드로 전달합니다.
+- AI API는 Supabase 로그인 JWT를 확인하고, 사용자가 접근 가능한 프로젝트인지 검사한 뒤 OpenAI를 호출합니다.
+- `AI_RATE_LIMIT_MAX`, `AI_RATE_LIMIT_WINDOW_MS`로 사용자별 AI 요청 제한을 조정할 수 있습니다.
 
 관련 파일:
 
