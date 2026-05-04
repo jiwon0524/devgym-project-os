@@ -7,12 +7,15 @@ import {
   Database,
   Download,
   FileText,
+  FileCheck2,
   GitBranch,
   Layers3,
   ListChecks,
   Monitor,
   ShieldAlert,
   Sparkles,
+  Table2,
+  Workflow,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "../../components/Button.jsx";
@@ -24,6 +27,7 @@ import {
   getTaskKey,
   normalizeAiRequirementResult,
 } from "./aiRequirementUtils.js";
+import { buildEngineeringArtifacts } from "./engineeringArtifacts.js";
 
 const tabs = [
   { id: "summary", label: "요약", icon: Sparkles },
@@ -35,6 +39,10 @@ const tabs = [
   { id: "risks", label: "리스크", icon: ShieldAlert },
   { id: "acceptance", label: "인수 조건", icon: CheckCircle2 },
   { id: "tests", label: "테스트", icon: Clipboard },
+  { id: "prd", label: "PRD", icon: FileText },
+  { id: "uml", label: "UML", icon: Workflow },
+  { id: "testPlan", label: "테스트 계획", icon: FileCheck2 },
+  { id: "traceability", label: "추적 매트릭스", icon: Table2 },
 ];
 
 function EmptyAnalysis() {
@@ -116,6 +124,154 @@ function DatabaseDiagram({ tables, relations }) {
   );
 }
 
+function DocumentList({ title, items }) {
+  return (
+    <div className="rounded-lg border border-surface-line bg-white p-4">
+      <h3 className="text-sm font-semibold text-ink-strong">{title}</h3>
+      <ul className="mt-3 space-y-2">
+        {items.map((item, index) => (
+          <li key={`${title}-${index}`} className="text-sm leading-6 text-ink-base">
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function MermaidBlock({ title, description, code, onCopy }) {
+  return (
+    <Card>
+      <CardHeader
+        eyebrow="Mermaid UML"
+        title={title}
+        action={
+          <Button variant="secondary" onClick={() => onCopy(code, `${title} 다이어그램을 복사했습니다.`)}>
+            <Copy size={15} aria-hidden="true" />
+            복사
+          </Button>
+        }
+      >
+        {description}
+      </CardHeader>
+      <CardBody>
+        <pre className="max-h-72 overflow-auto rounded-lg bg-ink-strong p-4 text-xs leading-5 text-white">
+          {code}
+        </pre>
+      </CardBody>
+    </Card>
+  );
+}
+
+function PrdView({ prd }) {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader eyebrow="Product Requirements Document" title={prd.title}>
+          {prd.problem}
+        </CardHeader>
+      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <DocumentList title="목표" items={prd.goals} />
+        <DocumentList title="범위" items={prd.scope.length ? prd.scope : ["분석 결과에서 범위가 아직 충분히 도출되지 않았습니다."]} />
+        <DocumentList title="제외 범위" items={prd.outOfScope} />
+        <DocumentList title="성공 지표" items={prd.successMetrics} />
+      </div>
+      <DocumentList title="대상 사용자" items={prd.targetUsers} />
+    </div>
+  );
+}
+
+function UmlView({ uml, onCopy }) {
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <MermaidBlock
+        title="Use Case"
+        description="액터와 핵심 사용 사례를 연결합니다."
+        code={uml.useCase}
+        onCopy={onCopy}
+      />
+      <MermaidBlock
+        title="Sequence"
+        description="사용자, 프론트엔드, API, DB 호출 순서를 보여줍니다."
+        code={uml.sequence}
+        onCopy={onCopy}
+      />
+      <MermaidBlock
+        title="Activity"
+        description="요구사항에서 검증까지의 업무 흐름입니다."
+        code={uml.activity}
+        onCopy={onCopy}
+      />
+      <MermaidBlock
+        title="State"
+        description="요구사항과 작업의 상태 전이 기준입니다."
+        code={uml.state}
+        onCopy={onCopy}
+      />
+    </div>
+  );
+}
+
+function TestPlanView({ testPlan }) {
+  return (
+    <div className="space-y-4">
+      <DocumentList title="테스트 전략" items={testPlan.strategy} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        {testPlan.levels.map((level) => (
+          <div key={level.name} className="rounded-lg border border-surface-line bg-white p-4">
+            <h3 className="text-sm font-semibold text-ink-strong">{level.name}</h3>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">{level.target}</p>
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <DocumentList title="진입 기준" items={testPlan.entryCriteria} />
+        <DocumentList title="완료 기준" items={testPlan.exitCriteria} />
+        <DocumentList title="회귀 범위" items={testPlan.regressionAreas} />
+      </div>
+    </div>
+  );
+}
+
+function TraceabilityView({ rows }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-surface-line bg-white">
+      <div className="overflow-x-auto">
+        <table className="min-w-[960px] text-left text-sm">
+          <thead className="border-b border-surface-line bg-surface-muted text-xs font-semibold uppercase text-ink-muted">
+            <tr>
+              <th className="px-4 py-3">ID</th>
+              <th className="px-4 py-3">유형</th>
+              <th className="px-4 py-3">요구사항</th>
+              <th className="px-4 py-3">API</th>
+              <th className="px-4 py-3">데이터</th>
+              <th className="px-4 py-3">작업</th>
+              <th className="px-4 py-3">테스트</th>
+              <th className="px-4 py-3">리스크</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-surface-line">
+            {rows.map((row) => (
+              <tr key={row.id} className="align-top">
+                <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-ink-strong">{row.id}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-ink-muted">{row.type}</td>
+                <td className="px-4 py-3 leading-6 text-ink-base">{row.requirement}</td>
+                <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-ink-muted">{row.api}</td>
+                <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-ink-muted">{row.data}</td>
+                <td className="px-4 py-3 leading-6 text-ink-muted">{row.task}</td>
+                <td className="px-4 py-3 leading-6 text-ink-muted">{row.test}</td>
+                <td className="px-4 py-3 leading-6 text-ink-muted">{row.risk}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!rows.length ? <div className="p-6 text-center text-sm text-ink-muted">추적할 요구사항이 없습니다.</div> : null}
+    </div>
+  );
+}
+
 export function RequirementResultTabs({
   analysis,
   selectedTaskKeys,
@@ -126,12 +282,23 @@ export function RequirementResultTabs({
   const [activeTab, setActiveTab] = useState("summary");
   const [feedback, setFeedback] = useState("");
   const normalized = useMemo(() => normalizeAiRequirementResult(analysis), [analysis]);
+  const artifacts = useMemo(() => buildEngineeringArtifacts(normalized), [normalized]);
 
   if (!normalized) return <EmptyAnalysis />;
 
   const copyApiSpec = async () => {
     await navigator.clipboard.writeText(getApiSpecText(normalized));
     setFeedback("API 스펙을 클립보드에 복사했습니다.");
+  };
+
+  const copyText = async (text, message) => {
+    await navigator.clipboard.writeText(text);
+    setFeedback(message);
+  };
+
+  const copyArtifacts = async () => {
+    if (!artifacts) return;
+    await copyText(artifacts.markdown, "실무 산출물 문서를 클립보드에 복사했습니다.");
   };
 
   const exportMarkdown = () => {
@@ -244,6 +411,14 @@ export function RequirementResultTabs({
             ))}
           </div>
         );
+      case "prd":
+        return artifacts ? <PrdView prd={artifacts.prd} /> : null;
+      case "uml":
+        return artifacts ? <UmlView uml={artifacts.uml} onCopy={copyText} /> : null;
+      case "testPlan":
+        return artifacts ? <TestPlanView testPlan={artifacts.testPlan} /> : null;
+      case "traceability":
+        return artifacts ? <TraceabilityView rows={artifacts.traceability} /> : null;
       default:
         return (
           <Card>
@@ -287,6 +462,10 @@ export function RequirementResultTabs({
         <Button variant="secondary" onClick={exportMarkdown}>
           <Download size={16} aria-hidden="true" />
           Markdown 내보내기
+        </Button>
+        <Button variant="secondary" onClick={copyArtifacts}>
+          <FileText size={16} aria-hidden="true" />
+          산출물 복사
         </Button>
         <Button variant="primary" onClick={onConvertToTaskBoard}>
           <Layers3 size={16} aria-hidden="true" />
