@@ -243,6 +243,36 @@ as $$
   limit 1;
 $$;
 
+create or replace function public.can_read_project(target_project uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.is_workspace_member(public.project_workspace(target_project));
+$$;
+
+create or replace function public.can_edit_project_artifacts(target_project uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.has_workspace_role(public.project_workspace(target_project), array['owner', 'admin', 'member']);
+$$;
+
+create or replace function public.can_manage_project(target_project uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.has_workspace_role(public.project_workspace(target_project), array['owner', 'admin']);
+$$;
+
 create or replace function public.requirement_project(target_requirement uuid)
 returns uuid
 language sql
@@ -274,36 +304,6 @@ security definer
 set search_path = public
 as $$
   select public.can_edit_project_artifacts(public.requirement_project(target_requirement));
-$$;
-
-create or replace function public.can_read_project(target_project uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select public.is_workspace_member(public.project_workspace(target_project));
-$$;
-
-create or replace function public.can_edit_project_artifacts(target_project uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select public.has_workspace_role(public.project_workspace(target_project), array['owner', 'admin', 'member']);
-$$;
-
-create or replace function public.can_manage_project(target_project uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select public.has_workspace_role(public.project_workspace(target_project), array['owner', 'admin']);
 $$;
 
 create or replace function public.create_requirement_analysis(
