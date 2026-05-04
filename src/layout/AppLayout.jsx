@@ -20,6 +20,7 @@ export function AppLayout({
   backendLoading,
   backendError,
   realtimeStatus,
+  authRequired,
   authUser,
   authLoading,
   authError,
@@ -43,7 +44,13 @@ export function AppLayout({
         onLogout={onLogout}
       />
       <main className="app-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto md:h-screen">
-        <BackendBanner mode={backendMode} loading={backendLoading} error={backendError} realtimeStatus={realtimeStatus} />
+        <BackendBanner
+          mode={backendMode}
+          loading={backendLoading}
+          error={backendError}
+          realtimeStatus={realtimeStatus}
+          authRequired={authRequired}
+        />
         {children}
       </main>
       <RightPanel

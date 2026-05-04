@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient.js";
 import { currentUserId } from "../features/workspace/workspaceData.js";
+import { assertUuid, isUuid } from "./idGuards.js";
 import { getAvatarColor, mapInvitation, mapWorkspace, mapWorkspaceMember, toDbRole } from "./mappers.js";
 import { getMockUser, makeMockId, readMockStore, updateMockStore } from "./mockStore.js";
 
@@ -19,6 +20,7 @@ export async function getWorkspaceMembers(workspaceId) {
   if (!isSupabaseConfigured) {
     return readMockStore().workspaceMembers.filter((member) => member.workspaceId === workspaceId);
   }
+  if (!isUuid(workspaceId)) return [];
 
   const { data, error } = await supabase
     .from("workspace_members")
@@ -91,6 +93,7 @@ export async function getInvitations(workspaceId) {
   if (!isSupabaseConfigured) {
     return readMockStore().invitations.filter((invite) => invite.workspaceId === workspaceId);
   }
+  if (!isUuid(workspaceId)) return [];
 
   const { data, error } = await supabase
     .from("invitations")
@@ -123,6 +126,8 @@ export async function inviteMember({ workspaceId, email, role, invitedBy }) {
 
     return invite;
   }
+
+  assertUuid(workspaceId, "워크스페이스 ID");
 
   const { data, error } = await supabase
     .from("invitations")

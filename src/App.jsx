@@ -75,8 +75,13 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [realtimeStatus, setRealtimeStatus] = useState(backendMode === "supabase" ? "준비 중" : "mock");
   const [presenceMembers, setPresenceMembers] = useState([]);
-  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId) || workspaces[0];
-  const workspaceMembers = team
+  const isSupabaseMode = backendMode === "supabase";
+  const isAuthRequired = isSupabaseMode && !authUser;
+  const visibleWorkspaces = isAuthRequired ? [] : workspaces;
+  const visibleTeam = isAuthRequired ? [] : team;
+  const visibleProject = isAuthRequired ? null : project;
+  const activeWorkspace = visibleWorkspaces.find((workspace) => workspace.id === activeWorkspaceId) || visibleWorkspaces[0] || null;
+  const workspaceMembers = visibleTeam
     .map((member) => normalizeMember(member, activeWorkspace?.id))
     .filter((member) => member.workspaceId === activeWorkspace?.id);
   const rightPanelTeam = presenceMembers.length
@@ -97,7 +102,7 @@ export default function App() {
     workspaceMembers.find((member) => member.userId === authUser?.id) ||
     workspaceMembers.find((member) => member.userId === currentUserId) ||
     workspaceMembers[0] ||
-    (authUser
+    (!isAuthRequired && authUser
       ? {
           id: authUser.id,
           userId: authUser.id,
@@ -121,8 +126,10 @@ export default function App() {
   }, []);
 
   const refreshProjectData = useCallback(
-    async (workspaceId, nextProject) => {
+    async (workspaceId, nextProject, options = {}) => {
       if (!workspaceId || !nextProject?.id) return;
+      const sessionUser = options.user || authUser;
+      if (backendMode === "supabase" && !sessionUser) return;
 
       const [requirementRows, taskRows, commentRows, activityRows] = await Promise.all([
         getRequirements(nextProject.id),
@@ -136,12 +143,19 @@ export default function App() {
       if (commentRows.length || backendMode === "supabase") setComments(commentRows);
       if (activityRows.length || backendMode === "supabase") setActivities(activityRows);
     },
-    [backendMode, setActivities, setComments, setRequirements, setTasks]
+    [authUser, backendMode, setActivities, setComments, setRequirements, setTasks]
   );
 
   const refreshWorkspaceData = useCallback(
-    async (workspaceId, preferredProjectId = project?.id) => {
+    async (workspaceId, preferredProjectId = project?.id, options = {}) => {
       if (!workspaceId) return;
+      const sessionUser = options.user || authUser;
+
+      if (backendMode === "supabase" && !sessionUser) {
+        setBackendLoading(false);
+        setBackendError("");
+        return;
+      }
 
       setBackendLoading(true);
       try {
@@ -165,7 +179,7 @@ export default function App() {
 
         if (nextProject) {
           setProject(nextProject);
-          await refreshProjectData(workspaceId, nextProject);
+          await refreshProjectData(workspaceId, nextProject, { user: sessionUser });
         } else if (backendMode === "supabase") {
           setProject(null);
           setRequirements([]);
@@ -182,6 +196,7 @@ export default function App() {
     },
     [
       backendMode,
+      authUser,
       project,
       refreshProjectData,
       replaceWorkspaceItems,
@@ -201,16 +216,41 @@ export default function App() {
     async function bootBackend() {
       setBackendLoading(true);
       try {
-        setBackendMode(getBackendMode());
+        const nextBackendMode = getBackendMode();
+        setBackendMode(nextBackendMode);
         const profile = await getCurrentProfile();
         if (!ignore) setAuthUser(profile);
+
+        if (nextBackendMode === "supabase" && !profile) {
+          if (!ignore) {
+            setBackendError("");
+            setWorkspaces([]);
+            setTeam([]);
+            setInvitations([]);
+            setProject(null);
+            setRequirements([]);
+            setTasks([]);
+            setComments([]);
+            setActivities([]);
+          }
+          return;
+        }
 
         const workspaceRows = await getWorkspaces();
         if (!ignore && workspaceRows.length) {
           setWorkspaces(workspaceRows);
           const selectedWorkspace = workspaceRows.find((workspace) => workspace.id === activeWorkspaceId) || workspaceRows[0];
           setActiveWorkspaceId(selectedWorkspace.id);
-          await refreshWorkspaceData(selectedWorkspace.id, project?.id);
+          await refreshWorkspaceData(selectedWorkspace.id, project?.id, { user: profile });
+        } else if (!ignore && nextBackendMode === "supabase") {
+          setWorkspaces([]);
+          setTeam([]);
+          setInvitations([]);
+          setProject(null);
+          setRequirements([]);
+          setTasks([]);
+          setComments([]);
+          setActivities([]);
         }
 
         if (!ignore) setBackendError("");
@@ -230,8 +270,9 @@ export default function App() {
 
   useEffect(() => {
     if (!activeWorkspaceId) return;
+    if (backendMode === "supabase" && !authUser) return;
     refreshWorkspaceData(activeWorkspaceId, project?.id);
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, authUser?.id, backendMode]);
 
   useEffect(() => {
     if (backendMode !== "supabase") {
@@ -561,12 +602,36 @@ export default function App() {
     try {
       await logout();
       setAuthUser(null);
+      setWorkspaces([]);
+      setTeam([]);
+      setInvitations([]);
+      setProject(null);
+      setRequirements([]);
+      setTasks([]);
+      setComments([]);
+      setActivities([]);
     } catch (error) {
       setAuthError(error?.message || "로그아웃에 실패했습니다.");
     } finally {
       setAuthLoading(false);
     }
   };
+
+  const renderAuthRequired = () => (
+    <>
+      <PageHeader
+        eyebrow="계정"
+        title="로그인이 필요합니다"
+        description="Supabase DB와 실시간 동기화를 사용하려면 먼저 이메일로 로그인하거나 새 계정을 만들어야 합니다."
+      />
+      <div className="p-6">
+        <EmptyState
+          title="실제 데이터 동기화 준비 완료"
+          description="로그인하면 워크스페이스, 프로젝트, 요구사항, 작업, 댓글이 Supabase 데이터베이스와 동기화됩니다. 왼쪽 하단의 로그인 패널에서 시작하세요."
+        />
+      </div>
+    </>
+  );
 
   const renderSetupRequired = (title) => (
     <>
@@ -635,6 +700,8 @@ export default function App() {
   );
 
   const renderContent = () => {
+    if (isAuthRequired) return renderAuthRequired();
+
     if (activeNav === "dashboard") {
       return (
         <Dashboard
@@ -683,8 +750,8 @@ export default function App() {
     <AppLayout
       activeNav={activeNav}
       onNavigate={navigate}
-      project={project}
-      tasks={tasks}
+      project={visibleProject}
+      tasks={isAuthRequired ? [] : tasks}
       team={rightPanelTeam}
       activeWorkspace={activeWorkspace}
       currentUser={currentUser}
@@ -698,6 +765,7 @@ export default function App() {
       backendLoading={backendLoading}
       backendError={backendError}
       realtimeStatus={realtimeStatus}
+      authRequired={isAuthRequired}
       authUser={authUser}
       authLoading={authLoading}
       authError={authError}

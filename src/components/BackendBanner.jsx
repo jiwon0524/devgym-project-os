@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle2, Database, Loader2, Wifi } from "lucide-react";
 
-export function BackendBanner({ mode, loading, error, realtimeStatus }) {
+export function BackendBanner({ mode, loading, error, realtimeStatus, authRequired }) {
   const isMock = mode !== "supabase";
 
   if (!loading && !error && !isMock && realtimeStatus === "SUBSCRIBED") return null;
@@ -10,16 +10,20 @@ export function BackendBanner({ mode, loading, error, realtimeStatus }) {
     ? "데이터를 불러오는 중입니다"
     : error
       ? "데이터 동기화 오류"
-      : isMock
-        ? "Mock 모드로 실행 중"
-        : "Realtime 연결 대기 중";
+      : authRequired
+        ? "로그인 후 동기화 시작"
+        : isMock
+          ? "Mock 모드로 실행 중"
+          : "Realtime 연결 대기 중";
   const description = loading
     ? "워크스페이스, 프로젝트, 작업, 댓글을 백엔드에서 확인하고 있습니다."
     : error
       ? error
-      : isMock
-        ? "Supabase 환경변수가 없어서 브라우저 로컬 데이터로 저장됩니다. 앱은 멈추지 않고 계속 사용할 수 있습니다."
-        : "Supabase Realtime 구독을 준비하고 있습니다.";
+      : authRequired
+        ? "Supabase 연결은 준비됐습니다. 이메일로 로그인하면 실제 데이터베이스와 실시간 동기화를 시작합니다."
+        : isMock
+          ? "Supabase 환경변수가 없어서 브라우저 로컬 데이터로 저장됩니다. 앱은 멈추지 않고 계속 사용할 수 있습니다."
+          : "Supabase Realtime 구독을 준비하고 있습니다.";
 
   return (
     <div className="border-b border-surface-line bg-white px-6 py-3">

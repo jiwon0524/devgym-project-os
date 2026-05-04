@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient.js";
+import { assertUuid, isUuid } from "./idGuards.js";
 import { mapProject, toDbProjectStatus } from "./mappers.js";
 import { makeMockId, readMockStore, updateMockStore } from "./mockStore.js";
 
@@ -6,6 +7,7 @@ export async function getProjects(workspaceId) {
   if (!isSupabaseConfigured) {
     return readMockStore().projects.filter((project) => project.workspaceId === workspaceId);
   }
+  if (!isUuid(workspaceId)) return [];
 
   const { data, error } = await supabase
     .from("projects")
@@ -36,6 +38,8 @@ export async function createProject({ workspaceId, name, description, status = "
 
     return project;
   }
+
+  assertUuid(workspaceId, "워크스페이스 ID");
 
   const { data, error } = await supabase
     .from("projects")
