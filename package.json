@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "smoke": "npm run build && node smoke-test.js",
-    "test": "node --test backend/tests/jsonValidator.test.js backend/tests/aiService.test.js src/services/requirementSaveMapper.test.js src/features/requirements/engineeringArtifacts.test.js"
+    "e2e:auth": "node e2e-auth-flow.js",
+    "test": "node --test backend/tests/jsonValidator.test.js backend/tests/aiService.test.js backend/tests/emailService.test.js src/services/requirementSaveMapper.test.js src/features/requirements/engineeringArtifacts.test.js src/services/artifactService.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",

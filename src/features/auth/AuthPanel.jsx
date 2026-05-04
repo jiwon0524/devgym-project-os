@@ -53,6 +53,7 @@ export function AuthPanel({ mode, user, loading, error, onLogin, onSignUp, onLog
         <>
           <button
             type="button"
+            data-testid="auth-email-toggle"
             className="mt-3 text-xs font-medium text-brand hover:text-brand-strong"
             onClick={() => setExpanded((current) => !current)}
           >
@@ -63,6 +64,7 @@ export function AuthPanel({ mode, user, loading, error, onLogin, onSignUp, onLog
             <form className="mt-3 space-y-3" onSubmit={submitLogin}>
               <FormField label="이메일">
                 <input
+                  data-testid="auth-email"
                   className={inputClassName}
                   type="email"
                   value={form.email}
@@ -72,6 +74,7 @@ export function AuthPanel({ mode, user, loading, error, onLogin, onSignUp, onLog
               </FormField>
               <FormField label="비밀번호">
                 <input
+                  data-testid="auth-password"
                   className={inputClassName}
                   type="password"
                   value={form.password}
@@ -81,6 +84,7 @@ export function AuthPanel({ mode, user, loading, error, onLogin, onSignUp, onLog
               </FormField>
               <FormField label="이름">
                 <input
+                  data-testid="auth-display-name"
                   className={inputClassName}
                   value={form.displayName}
                   onChange={(event) => setForm({ ...form, displayName: event.target.value })}
@@ -88,13 +92,19 @@ export function AuthPanel({ mode, user, loading, error, onLogin, onSignUp, onLog
                 />
               </FormField>
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" variant="primary" disabled={loading || !form.email || !form.password}>
+                <Button
+                  data-testid="auth-login"
+                  type="submit"
+                  variant="primary"
+                  disabled={loading || !form.email || !form.password}
+                >
                   <LogIn size={16} aria-hidden="true" />
                   로그인
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
+                  data-testid="auth-signup"
                   disabled={loading || !form.email || !form.password}
                   onClick={submitSignUp}
                 >

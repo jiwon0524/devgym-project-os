@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { existsSync, readFileSync } from "node:fs";
 import { handleAiRoutes } from "./routes/aiRoutes.js";
+import { handleInvitationRoutes } from "./routes/invitationRoutes.js";
 
 function loadLocalEnv() {
   if (!existsSync(".env")) return;
@@ -24,6 +25,8 @@ const server = createServer(async (request, response) => {
   try {
     const handled = await handleAiRoutes(request, response);
     if (handled) return;
+    const invitationHandled = await handleInvitationRoutes(request, response);
+    if (invitationHandled) return;
 
     response.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
     response.end(JSON.stringify({ success: false, error: "Not found" }));

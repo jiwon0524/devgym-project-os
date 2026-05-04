@@ -1,8 +1,57 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient.js";
+import { getCurrentSession } from "../lib/supabaseClient.js";
 import { currentUserId } from "../features/workspace/workspaceData.js";
 import { assertUuid, isUuid } from "./idGuards.js";
 import { getAvatarColor, mapInvitation, mapWorkspace, mapWorkspaceMember, toDbRole } from "./mappers.js";
 import { getMockUser, makeMockId, readMockStore, updateMockStore } from "./mockStore.js";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+
+function buildInviteLink(invite) {
+  const baseUrl = import.meta.env.VITE_APP_BASE_URL || globalThis.location?.origin || "";
+  const token = encodeURIComponent(invite.token || invite.id);
+  return `${baseUrl || ""}/?invite=${token}`;
+}
+
+async function requestInviteEmail({ workspaceId, workspaceName, invite }) {
+  const session = await getCurrentSession();
+  if (!session?.access_token) {
+    return {
+      sent: false,
+      provider: "manual-link",
+      reason: "AUTH_REQUIRED",
+      inviteLink: buildInviteLink(invite),
+    };
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/invitations/send`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      workspaceId,
+      workspaceName,
+      email: invite.email,
+      role: invite.role,
+      inviteLink: buildInviteLink(invite),
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.success) {
+    return {
+      sent: false,
+      provider: "manual-link",
+      reason: payload.code || "INVITE_EMAIL_FAILED",
+      error: payload.error || "초대 이메일 발송에 실패했습니다.",
+      inviteLink: buildInviteLink(invite),
+    };
+  }
+
+  return payload.delivery;
+}
 
 export async function getWorkspaces() {
   if (!isSupabaseConfigured) return readMockStore().workspaces;
@@ -105,7 +154,7 @@ export async function getInvitations(workspaceId) {
   return data.map(mapInvitation);
 }
 
-export async function inviteMember({ workspaceId, email, role, invitedBy }) {
+export async function inviteMember({ workspaceId, workspaceName, email, role, invitedBy }) {
   if (!isSupabaseConfigured) {
     const invite = {
       id: makeMockId("invite"),
@@ -124,7 +173,15 @@ export async function inviteMember({ workspaceId, email, role, invitedBy }) {
       invitations: [invite, ...store.invitations],
     }));
 
-    return invite;
+    return {
+      ...invite,
+      emailDelivery: {
+        sent: false,
+        provider: "manual-link",
+        reason: "MOCK_MODE",
+        inviteLink: buildInviteLink(invite),
+      },
+    };
   }
 
   assertUuid(workspaceId, "워크스페이스 ID");
@@ -141,7 +198,14 @@ export async function inviteMember({ workspaceId, email, role, invitedBy }) {
     .single();
 
   if (error) throw error;
-  return mapInvitation(data);
+  const invite = mapInvitation(data);
+  const emailDelivery = await requestInviteEmail({
+    workspaceId,
+    workspaceName: workspaceName || "ProjectOS",
+    invite,
+  });
+
+  return { ...invite, emailDelivery };
 }
 
 export async function acceptInvitation({ inviteId, userId, userEmail }) {

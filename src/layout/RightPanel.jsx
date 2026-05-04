@@ -20,6 +20,7 @@ export function RightPanel({
   activeView,
   backendMode,
   realtimeStatus,
+  collaborationSignals = [],
 }) {
   const doneTasks = tasks.filter((task) => task.status === "Done" || task.status === "완료").length;
   const progress = tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0;
@@ -55,6 +56,20 @@ export function RightPanel({
                 : "Supabase 환경변수를 설정하면 presence와 변경 이벤트가 실시간으로 반영됩니다."}
           </p>
         </section>
+
+        {collaborationSignals.length ? (
+          <section className="rounded-lg border border-surface-line bg-white p-4">
+            <h3 className="text-sm font-semibold text-ink-strong">실시간 편집 신호</h3>
+            <div className="mt-3 space-y-2">
+              {collaborationSignals.slice(0, 4).map((signal) => (
+                <div key={signal.id} className="rounded-lg bg-surface-muted p-2 text-xs leading-5 text-ink-muted">
+                  <span className="font-medium text-ink-strong">{signal.name || signal.email || "팀원"}</span>
+                  {signal.editing ? `이 ${signal.editing}을 보고 있습니다.` : "이 접속했습니다."}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {project ? (
           <>

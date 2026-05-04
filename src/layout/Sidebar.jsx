@@ -48,6 +48,7 @@ export function Sidebar({
             <button
               key={item.id}
               type="button"
+              data-testid={`nav-${item.id}`}
               onClick={() => onNavigate(item.id)}
               className={`flex h-10 w-auto shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-medium transition duration-150 md:w-full md:gap-3 md:px-3 md:text-sm ${
                 active

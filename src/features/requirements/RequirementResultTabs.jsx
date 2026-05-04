@@ -12,6 +12,7 @@ import {
   Layers3,
   ListChecks,
   Monitor,
+  Save,
   ShieldAlert,
   Sparkles,
   Table2,
@@ -81,7 +82,7 @@ function JsonBlock({ value }) {
 
 function DatabaseDiagram({ tables, relations }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="requirement-results">
       <div className="grid gap-4 lg:grid-cols-2">
         {tables.map((table) => (
           <div key={table.tableName} className="overflow-hidden rounded-lg border border-surface-line bg-white">
@@ -278,9 +279,12 @@ export function RequirementResultTabs({
   onToggleTask,
   onAddSelectedTasks,
   onConvertToTaskBoard,
+  onSaveArtifacts,
+  canSaveArtifacts = true,
 }) {
   const [activeTab, setActiveTab] = useState("summary");
   const [feedback, setFeedback] = useState("");
+  const [savingArtifacts, setSavingArtifacts] = useState(false);
   const normalized = useMemo(() => normalizeAiRequirementResult(analysis), [analysis]);
   const artifacts = useMemo(() => buildEngineeringArtifacts(normalized), [normalized]);
 
@@ -299,6 +303,20 @@ export function RequirementResultTabs({
   const copyArtifacts = async () => {
     if (!artifacts) return;
     await copyText(artifacts.markdown, "실무 산출물 문서를 클립보드에 복사했습니다.");
+  };
+
+  const saveArtifacts = async () => {
+    if (!onSaveArtifacts || !canSaveArtifacts || savingArtifacts) return;
+    setSavingArtifacts(true);
+    setFeedback("");
+    try {
+      const saved = await onSaveArtifacts(normalized);
+      setFeedback(`${saved.length}개 산출물을 문서 버전으로 저장했습니다.`);
+    } catch (error) {
+      setFeedback(error?.message || "산출물 저장에 실패했습니다.");
+    } finally {
+      setSavingArtifacts(false);
+    }
   };
 
   const exportMarkdown = () => {
@@ -467,7 +485,16 @@ export function RequirementResultTabs({
           <FileText size={16} aria-hidden="true" />
           산출물 복사
         </Button>
-        <Button variant="primary" onClick={onConvertToTaskBoard}>
+        <Button
+          variant="secondary"
+          onClick={saveArtifacts}
+          disabled={!onSaveArtifacts || !canSaveArtifacts || savingArtifacts}
+          data-testid="save-artifacts"
+        >
+          <Save size={16} aria-hidden="true" />
+          {savingArtifacts ? "저장 중" : "산출물 저장"}
+        </Button>
+        <Button variant="primary" onClick={onConvertToTaskBoard} data-testid="convert-task-board">
           <Layers3 size={16} aria-hidden="true" />
           작업 보드로 변환
         </Button>

@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { RequirementAnalyzer } from "../../features/requirements/RequirementAnalyzer.jsx";
 import { RequirementResultTabs } from "../../features/requirements/RequirementResultTabs.jsx";
 import { getTaskKey, normalizeAiRequirementResult } from "../../features/requirements/aiRequirementUtils.js";
+import { canUserPerformAction } from "../../features/permissions/permissions.js";
 import { analyzeRequirementWithFallback } from "../../services/aiRequirementService.js";
+import { saveEngineeringArtifacts } from "../../services/artifactService.js";
 
 export function RequirementsTab({
   project,
@@ -32,8 +34,8 @@ export function RequirementsTab({
         projectId: project?.id,
         input,
       });
-      await onRequirementsChange(nextAnalysis);
-      setSelectedTaskKeys(nextAnalysis.tasks.map(getTaskKey));
+      const savedAnalysis = (await onRequirementsChange(nextAnalysis)) || nextAnalysis;
+      setSelectedTaskKeys(savedAnalysis.tasks.map(getTaskKey));
       onAddActivity?.(
         nextAnalysis.meta?.provider === "openai" ? "AI 요구사항을 생성했습니다" : "요구사항을 로컬 분석했습니다",
         nextAnalysis.summary,
@@ -65,6 +67,28 @@ export function RequirementsTab({
     onOpenTasks?.();
   };
 
+  const saveArtifacts = async (normalizedAnalysis) => {
+    if (!project?.workspaceId || !project?.id) {
+      throw new Error("프로젝트와 워크스페이스 정보가 필요합니다.");
+    }
+
+    const requirementId = normalizedAnalysis?.id || requirements?.id;
+    if (!requirementId) {
+      throw new Error("먼저 AI 분석 결과를 요구사항으로 저장해야 산출물 버전을 만들 수 있습니다.");
+    }
+
+    const saved = await saveEngineeringArtifacts({
+      workspaceId: project.workspaceId,
+      projectId: project.id,
+      requirementId,
+      analysis: normalizedAnalysis,
+      createdBy: currentUser?.userId || currentUser?.id,
+    });
+
+    onAddActivity?.("요구사항 산출물을 버전으로 저장했습니다", `${saved.length}개 문서`, currentUser?.name);
+    return saved;
+  };
+
   return (
     <div className="grid gap-6 p-6 xl:grid-cols-[420px_minmax(0,1fr)]">
       <RequirementAnalyzer
@@ -83,6 +107,8 @@ export function RequirementsTab({
         onToggleTask={toggleTask}
         onAddSelectedTasks={addSelectedTasks}
         onConvertToTaskBoard={convertToTaskBoard}
+        onSaveArtifacts={saveArtifacts}
+        canSaveArtifacts={canUserPerformAction(currentRole, "artifact.save")}
       />
     </div>
   );

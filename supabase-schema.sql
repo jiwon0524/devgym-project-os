@@ -136,6 +136,31 @@ where invite_token is null;
 alter table public.invitations alter column invite_token set default encode(gen_random_bytes(16), 'hex');
 alter table public.invitations alter column invite_token set not null;
 
+create table if not exists public.engineering_documents (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  project_id uuid not null references public.projects(id) on delete cascade,
+  requirement_id uuid references public.requirements(id) on delete cascade,
+  type text not null check (type in ('prd', 'uml', 'test_plan', 'traceability', 'markdown')),
+  title text not null,
+  current_version integer not null default 0,
+  created_by uuid not null references public.profiles(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (project_id, requirement_id, type)
+);
+
+create table if not exists public.engineering_document_versions (
+  id uuid primary key default gen_random_uuid(),
+  document_id uuid not null references public.engineering_documents(id) on delete cascade,
+  version_number integer not null,
+  content jsonb not null default '{}'::jsonb,
+  markdown text,
+  created_by uuid not null references public.profiles(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  unique (document_id, version_number)
+);
+
 create index if not exists workspace_members_workspace_id_idx on public.workspace_members(workspace_id);
 create index if not exists workspace_members_user_id_idx on public.workspace_members(user_id);
 create index if not exists projects_workspace_id_idx on public.projects(workspace_id);
@@ -149,6 +174,10 @@ create index if not exists activity_logs_workspace_id_idx on public.activity_log
 create index if not exists invitations_workspace_id_idx on public.invitations(workspace_id);
 create index if not exists invitations_email_idx on public.invitations(lower(email));
 create unique index if not exists invitations_invite_token_idx on public.invitations(invite_token);
+create index if not exists engineering_documents_workspace_id_idx on public.engineering_documents(workspace_id);
+create index if not exists engineering_documents_project_id_idx on public.engineering_documents(project_id);
+create index if not exists engineering_documents_requirement_id_idx on public.engineering_documents(requirement_id);
+create index if not exists engineering_document_versions_document_id_idx on public.engineering_document_versions(document_id);
 
 alter table public.profiles enable row level security;
 alter table public.workspaces enable row level security;
@@ -162,6 +191,8 @@ alter table public.tasks enable row level security;
 alter table public.comments enable row level security;
 alter table public.activity_logs enable row level security;
 alter table public.invitations enable row level security;
+alter table public.engineering_documents enable row level security;
+alter table public.engineering_document_versions enable row level security;
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -511,6 +542,126 @@ revoke all on function public.accept_workspace_invitation(uuid) from anon;
 revoke all on function public.accept_workspace_invitation(uuid) from public;
 grant execute on function public.accept_workspace_invitation(uuid) to authenticated;
 
+create or replace function public.save_engineering_document_version(
+  p_workspace_id uuid,
+  p_project_id uuid,
+  p_requirement_id uuid,
+  p_type text,
+  p_title text,
+  p_content jsonb,
+  p_markdown text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_document public.engineering_documents;
+  v_version public.engineering_document_versions;
+  v_version_number integer;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if p_type not in ('prd', 'uml', 'test_plan', 'traceability', 'markdown') then
+    raise exception 'Unsupported document type';
+  end if;
+
+  if public.project_workspace(p_project_id) <> p_workspace_id then
+    raise exception 'Project does not belong to workspace';
+  end if;
+
+  if not public.can_edit_project_artifacts(p_project_id) then
+    raise exception 'Not allowed to save engineering documents';
+  end if;
+
+  if p_requirement_id is not null and public.requirement_project(p_requirement_id) <> p_project_id then
+    raise exception 'Requirement does not belong to project';
+  end if;
+
+  insert into public.engineering_documents (
+    workspace_id,
+    project_id,
+    requirement_id,
+    type,
+    title,
+    current_version,
+    created_by
+  )
+  values (
+    p_workspace_id,
+    p_project_id,
+    p_requirement_id,
+    p_type,
+    p_title,
+    0,
+    auth.uid()
+  )
+  on conflict (project_id, requirement_id, type)
+  do update set
+    title = excluded.title,
+    updated_at = now()
+  returning *
+  into v_document;
+
+  select coalesce(max(version_number), 0) + 1
+  into v_version_number
+  from public.engineering_document_versions
+  where document_id = v_document.id;
+
+  insert into public.engineering_document_versions (
+    document_id,
+    version_number,
+    content,
+    markdown,
+    created_by
+  )
+  values (
+    v_document.id,
+    v_version_number,
+    coalesce(p_content, '{}'::jsonb),
+    p_markdown,
+    auth.uid()
+  )
+  returning *
+  into v_version;
+
+  update public.engineering_documents
+  set current_version = v_version.version_number,
+      updated_at = now()
+  where id = v_document.id
+  returning *
+  into v_document;
+
+  insert into public.activity_logs (workspace_id, project_id, actor_id, action, target_type, target_id)
+  values (
+    p_workspace_id,
+    p_project_id,
+    auth.uid(),
+    '요구사항 산출물을 버전으로 저장했습니다',
+    'engineering_document',
+    v_document.id
+  );
+
+  return jsonb_build_object(
+    'document', to_jsonb(v_document),
+    'version', to_jsonb(v_version)
+  );
+end;
+$$;
+
+revoke all on function public.save_engineering_document_version(
+  uuid, uuid, uuid, text, text, jsonb, text
+) from anon;
+revoke all on function public.save_engineering_document_version(
+  uuid, uuid, uuid, text, text, jsonb, text
+) from public;
+grant execute on function public.save_engineering_document_version(
+  uuid, uuid, uuid, text, text, jsonb, text
+) to authenticated;
+
 drop policy if exists "profiles can read own profile" on public.profiles;
 create policy "profiles can read own profile"
 on public.profiles
@@ -819,6 +970,61 @@ on public.activity_logs
 for insert
 with check (public.is_workspace_member(workspace_id));
 
+drop policy if exists "members can read engineering documents" on public.engineering_documents;
+create policy "members can read engineering documents"
+on public.engineering_documents
+for select
+using (public.is_workspace_member(workspace_id));
+
+drop policy if exists "editors can create engineering documents" on public.engineering_documents;
+create policy "editors can create engineering documents"
+on public.engineering_documents
+for insert
+with check (
+  created_by = auth.uid()
+  and public.can_edit_project_artifacts(project_id)
+);
+
+drop policy if exists "editors can update engineering documents" on public.engineering_documents;
+create policy "editors can update engineering documents"
+on public.engineering_documents
+for update
+using (public.can_edit_project_artifacts(project_id))
+with check (public.can_edit_project_artifacts(project_id));
+
+drop policy if exists "editors can delete engineering documents" on public.engineering_documents;
+create policy "editors can delete engineering documents"
+on public.engineering_documents
+for delete
+using (public.can_edit_project_artifacts(project_id));
+
+drop policy if exists "members can read engineering document versions" on public.engineering_document_versions;
+create policy "members can read engineering document versions"
+on public.engineering_document_versions
+for select
+using (
+  exists (
+    select 1
+    from public.engineering_documents document
+    where document.id = engineering_document_versions.document_id
+      and public.is_workspace_member(document.workspace_id)
+  )
+);
+
+drop policy if exists "editors can create engineering document versions" on public.engineering_document_versions;
+create policy "editors can create engineering document versions"
+on public.engineering_document_versions
+for insert
+with check (
+  created_by = auth.uid()
+  and exists (
+    select 1
+    from public.engineering_documents document
+    where document.id = engineering_document_versions.document_id
+      and public.can_edit_project_artifacts(document.project_id)
+  )
+);
+
 drop policy if exists "owners and admins can read invitations" on public.invitations;
 create policy "owners and admins can read invitations"
 on public.invitations
@@ -889,5 +1095,17 @@ end $$;
 do $$
 begin
   alter publication supabase_realtime add table public.risks;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.engineering_documents;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.engineering_document_versions;
 exception when duplicate_object then null;
 end $$;

@@ -28,6 +28,8 @@ const initialStore = {
   comments: defaultComments,
   activityLogs: defaultActivities,
   invitations: defaultInvitations,
+  engineeringDocuments: [],
+  engineeringDocumentVersions: [],
 };
 
 function createId(prefix) {

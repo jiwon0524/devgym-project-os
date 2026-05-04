@@ -64,16 +64,30 @@ export function TeamTab({
   const [workspaceName, setWorkspaceName] = useState("");
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState("");
+  const [isInviting, setIsInviting] = useState(false);
   const canInvite = canUserPerformAction(currentRole, "member.invite");
   const canManage = canUserPerformAction(currentRole, "member.manage");
   const canDeleteWorkspace = canUserPerformAction(currentRole, "workspace.delete");
 
-  const inviteMember = (event) => {
+  const inviteMember = async (event) => {
     event.preventDefault();
-    if (!invite.email.trim() || !canInvite) return;
-    onInviteMember({ email: invite.email.trim(), role: invite.role });
+    if (!invite.email.trim() || !canInvite || isInviting) return;
+    setIsInviting(true);
+    const nextInvite = await onInviteMember({ email: invite.email.trim(), role: invite.role });
+    setIsInviting(false);
+    if (!nextInvite) {
+      setInviteFeedback("초대 생성에 실패했습니다. 권한과 이메일 주소를 확인해주세요.");
+      return;
+    }
+
     setInvite({ email: "", role: "Member" });
-    setInviteFeedback("초대를 만들었습니다. 대기 목록에서 초대 링크를 복사할 수 있습니다.");
+    if (nextInvite.emailDelivery?.sent) {
+      setInviteFeedback(`${nextInvite.email}로 초대 이메일을 발송했습니다.`);
+    } else if (nextInvite.emailDelivery?.inviteLink) {
+      setInviteFeedback("초대 링크를 만들었습니다. 이메일 발송 키가 없으면 대기 목록에서 링크를 복사해 전달하세요.");
+    } else {
+      setInviteFeedback("초대를 만들었습니다. 대기 목록에서 초대 링크를 복사할 수 있습니다.");
+    }
   };
 
   const createWorkspace = (event) => {
@@ -180,9 +194,9 @@ export function TeamTab({
                 </select>
               </FormField>
               <PermissionNotice role={currentRole} actionLabel="멤버 초대" visible={!canInvite} />
-              <Button type="submit" variant="primary" disabled={!invite.email.trim() || !canInvite}>
+              <Button type="submit" variant="primary" disabled={!invite.email.trim() || !canInvite || isInviting}>
                 <MailPlus size={16} aria-hidden="true" />
-                초대하기
+                {isInviting ? "초대 중" : "초대하기"}
               </Button>
             </form>
             {inviteFeedback ? (

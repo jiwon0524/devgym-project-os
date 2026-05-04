@@ -20,6 +20,7 @@ export function AppLayout({
   backendLoading,
   backendError,
   realtimeStatus,
+  collaborationSignals,
   authRequired,
   authUser,
   authLoading,
@@ -68,6 +69,7 @@ export function AppLayout({
         activeView={activeNav}
         backendMode={backendMode}
         realtimeStatus={realtimeStatus}
+        collaborationSignals={collaborationSignals}
       />
     </div>
   );

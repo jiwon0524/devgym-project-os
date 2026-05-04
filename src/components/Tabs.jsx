@@ -10,6 +10,7 @@ export function Tabs({ tabs, activeTab, onChange }) {
             <button
               key={id}
               type="button"
+              data-testid={`tab-${id}`}
               onClick={() => onChange(id)}
               className={`border-b-2 px-3 py-3 text-sm font-medium transition duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                 activeTab === id

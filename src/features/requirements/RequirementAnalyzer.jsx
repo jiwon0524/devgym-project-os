@@ -31,6 +31,7 @@ export function RequirementAnalyzer({
             hint='예: "네이버 로그인으로 회원가입하고, 팀 프로젝트를 만들고, 팀원이 댓글을 달 수 있게 해줘"'
           >
             <textarea
+              data-testid="requirement-input"
               className={`${textareaClassName} min-h-48`}
               value={input}
               onChange={(event) => onInputChange(event.target.value)}
@@ -43,6 +44,7 @@ export function RequirementAnalyzer({
 
           <div className="flex flex-wrap gap-2">
             <Button
+              data-testid="analyze-requirement-submit"
               variant="primary"
               onClick={onAnalyze}
               disabled={!input.trim() || isAnalyzing || !canEditRequirements}

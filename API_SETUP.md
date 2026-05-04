@@ -143,7 +143,36 @@ http://127.0.0.1:5173/
 ```txt
 create_requirement_analysis
 accept_workspace_invitation
+save_engineering_document_version
 ```
 
 - `create_requirement_analysis`는 요구사항, 인수 조건, 리스크, 테스트 케이스, 생성 작업, 활동 로그를 하나의 DB 트랜잭션으로 저장합니다.
 - `accept_workspace_invitation`은 로그인 이메일과 초대 이메일이 일치할 때만 멤버 추가와 초대 상태 변경을 처리합니다.
+- `save_engineering_document_version`은 PRD, UML, 테스트 계획, 추적 매트릭스를 문서 버전으로 저장합니다.
+
+## 8. 선택: 초대 이메일 발송
+
+초대 기능은 기본적으로 초대 링크를 생성합니다. 실제 이메일 발송까지 연결하려면 Resend 키를 backend 환경변수에 추가하세요.
+
+```bash
+RESEND_API_KEY=your-resend-api-key
+INVITE_EMAIL_FROM=ProjectOS <onboarding@your-domain.com>
+VITE_APP_BASE_URL=http://127.0.0.1:5173
+```
+
+- `RESEND_API_KEY`가 없으면 앱은 초대 링크 복사 방식으로 동작합니다.
+- 운영에서는 Resend 도메인 인증 후 `INVITE_EMAIL_FROM`을 실제 도메인 주소로 바꾸는 것이 좋습니다.
+
+## 9. 실제 계정 E2E 테스트
+
+실제 Supabase 계정으로 워크스페이스 생성, 프로젝트 생성, AI 분석, 산출물 저장, 작업 보드 전환까지 확인하려면 테스트 계정을 준비한 뒤 실행합니다.
+
+```bash
+E2E_TEST_EMAIL=your-test-user@example.com
+E2E_TEST_PASSWORD=your-test-password
+npm run e2e:auth
+```
+
+- 테스트 계정은 Supabase Auth에 미리 가입되어 있어야 합니다.
+- 기본 실행은 dev 서버와 API 서버를 함께 띄웁니다.
+- 이미 서버를 띄워둔 상태라면 `E2E_START_SERVERS=false E2E_BASE_URL=http://127.0.0.1:5173 npm run e2e:auth`로 실행할 수 있습니다.

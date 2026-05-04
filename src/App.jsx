@@ -1,5 +1,8 @@
+import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "./components/Button.jsx";
 import { EmptyState } from "./components/EmptyState.jsx";
+import { FormField, inputClassName } from "./components/FormField.jsx";
 import { PageHeader } from "./components/PageHeader.jsx";
 import { defaultTasks } from "./data/seedData.js";
 import { canUserPerformAction } from "./features/permissions/permissions.js";
@@ -75,6 +78,8 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [realtimeStatus, setRealtimeStatus] = useState(backendMode === "supabase" ? "준비 중" : "mock");
   const [presenceMembers, setPresenceMembers] = useState([]);
+  const [collaborationSignals, setCollaborationSignals] = useState([]);
+  const [workspaceSetupName, setWorkspaceSetupName] = useState("");
   const isSupabaseMode = backendMode === "supabase";
   const isAuthRequired = isSupabaseMode && !authUser;
   const visibleWorkspaces = isAuthRequired ? [] : workspaces;
@@ -278,12 +283,14 @@ export default function App() {
     if (backendMode !== "supabase") {
       setRealtimeStatus("mock");
       setPresenceMembers((current) => (current.length ? [] : current));
+      setCollaborationSignals((current) => (current.length ? [] : current));
       return () => {};
     }
 
     if (!activeWorkspace?.id || !project?.id) {
       setRealtimeStatus(backendMode === "supabase" ? "대기 중" : "mock");
       setPresenceMembers((current) => (current.length ? [] : current));
+      setCollaborationSignals((current) => (current.length ? [] : current));
       return () => {};
     }
 
@@ -294,6 +301,8 @@ export default function App() {
       activeView: activeTab || activeNav,
       onStatusChange: setRealtimeStatus,
       onPresenceChange: setPresenceMembers,
+      onBroadcastChange: (signal) =>
+        setCollaborationSignals((current) => [signal, ...current].slice(0, 8)),
       onChange: () => refreshWorkspaceData(activeWorkspace.id, project.id),
     });
   }, [
@@ -373,23 +382,34 @@ export default function App() {
       setTeam([...team, ownerMember]);
       setActiveWorkspaceId(workspace.id);
       setActivities([createActivity(currentUser?.name || "지원", "워크스페이스를 생성했습니다", trimmedName), ...activities]);
+      return workspace;
     } catch (error) {
       reportBackendError(error);
+      return null;
     }
+  };
+
+  const createWorkspaceFromSetup = async (event) => {
+    event.preventDefault();
+    const workspace = await createWorkspace(workspaceSetupName);
+    if (workspace) setWorkspaceSetupName("");
   };
 
   const inviteMember = async ({ email, role }) => {
     try {
       const invite = await persistInvitation({
         workspaceId: activeWorkspace.id,
+        workspaceName: activeWorkspace.name,
         email,
         role,
         invitedBy: authUser?.id || currentUser?.userId || currentUserId,
       });
       setInvitations([invite, ...invitations]);
       addActivity("멤버를 초대했습니다", `${email} · ${role}`);
+      return invite;
     } catch (error) {
       reportBackendError(error);
+      return null;
     }
   };
 
@@ -503,6 +523,10 @@ export default function App() {
     event.preventDefault();
     const name = draft.name.trim();
     if (!name) return;
+    if (!activeWorkspace?.id) {
+      reportBackendError(new Error("프로젝트를 만들기 전에 워크스페이스를 먼저 생성해주세요."));
+      return;
+    }
 
     try {
       const createdProject = await persistProject({
@@ -517,8 +541,8 @@ export default function App() {
 
       setProject(createdProject);
       setDraft(emptyDraft);
-      setTasks((currentTasks) => (currentTasks.length ? currentTasks : defaultTasks));
-      setTeam((currentTeam) => (currentTeam.length ? currentTeam : defaultWorkspaceMembers));
+      setTasks(backendMode === "mock" ? (tasks.length ? tasks : defaultTasks) : []);
+      setTeam(backendMode === "mock" ? (team.length ? team : defaultWorkspaceMembers) : team);
       addActivity("프로젝트를 생성했습니다", name);
       setActiveNav("projects");
       setActiveTab("Overview");
@@ -561,8 +585,10 @@ export default function App() {
       addActivity("요구사항을 분석하고 저장했습니다", analysis.meta?.summary || "AI 분석 결과", undefined, {
         persist: false,
       });
+      return analysisWithId;
     } catch (error) {
       reportBackendError(error);
+      return analysis;
     }
   };
 
@@ -628,6 +654,48 @@ export default function App() {
         <EmptyState
           title="실제 데이터 동기화 준비 완료"
           description="로그인하면 워크스페이스, 프로젝트, 요구사항, 작업, 댓글이 Supabase 데이터베이스와 동기화됩니다. 왼쪽 하단의 로그인 패널에서 시작하세요."
+        />
+      </div>
+    </>
+  );
+
+  const renderWorkspaceRequired = () => (
+    <>
+      <PageHeader
+        eyebrow="워크스페이스"
+        title="팀 워크스페이스를 먼저 만드세요"
+        description="실제 사용자 계정에서는 워크스페이스가 프로젝트, 멤버, 초대, 권한의 기준이 됩니다."
+      />
+      <div className="grid gap-6 p-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <section className="rounded-lg border border-surface-line bg-white p-5">
+          <h2 className="text-base font-semibold text-ink-strong">새 워크스페이스</h2>
+          <p className="mt-2 text-sm leading-6 text-ink-muted">
+            개인 포트폴리오라면 본인 이름이나 팀 이름으로 시작하면 됩니다.
+          </p>
+          <form className="mt-5 space-y-4" onSubmit={createWorkspaceFromSetup}>
+            <FormField label="워크스페이스 이름">
+              <input
+                data-testid="workspace-name"
+                className={inputClassName}
+                value={workspaceSetupName}
+                onChange={(event) => setWorkspaceSetupName(event.target.value)}
+                placeholder="예: DevGym 팀"
+              />
+            </FormField>
+            <Button
+              data-testid="create-workspace-submit"
+              type="submit"
+              variant="primary"
+              disabled={!workspaceSetupName.trim()}
+            >
+              <Plus size={16} aria-hidden="true" />
+              워크스페이스 만들기
+            </Button>
+          </form>
+        </section>
+        <EmptyState
+          title="워크스페이스 생성 후 프로젝트를 시작합니다"
+          description="워크스페이스를 만들면 Owner 권한이 자동으로 부여되고, 그 다음 프로젝트 생성, AI 요구사항 분석, 작업 보드 전환까지 이어집니다."
         />
       </div>
     </>
@@ -701,6 +769,7 @@ export default function App() {
 
   const renderContent = () => {
     if (isAuthRequired) return renderAuthRequired();
+    if (isSupabaseMode && !activeWorkspace) return renderWorkspaceRequired();
 
     if (activeNav === "dashboard") {
       return (
@@ -765,6 +834,7 @@ export default function App() {
       backendLoading={backendLoading}
       backendError={backendError}
       realtimeStatus={realtimeStatus}
+      collaborationSignals={collaborationSignals}
       authRequired={isAuthRequired}
       authUser={authUser}
       authLoading={authLoading}

@@ -82,3 +82,63 @@ export async function authorizeProjectAccess({ token, projectId }) {
     project,
   };
 }
+
+export async function authorizeWorkspaceAccess({
+  token,
+  workspaceId,
+  allowedRoles = ["owner", "admin", "member", "viewer"],
+}) {
+  if (!workspaceId) {
+    throw new ApiError("workspaceId가 필요합니다.", {
+      statusCode: 400,
+      code: "WORKSPACE_ID_REQUIRED",
+    });
+  }
+
+  const { url, anonKey } = getSupabaseConfig();
+  const supabase = createClient(url, anonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  });
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !userData?.user) {
+    throw new ApiError("로그인 세션이 유효하지 않습니다.", {
+      statusCode: 401,
+      code: "INVALID_SESSION",
+    });
+  }
+
+  const { data: membership, error: membershipError } = await supabase
+    .from("workspace_members")
+    .select("workspace_id, user_id, role")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userData.user.id)
+    .maybeSingle();
+
+  if (membershipError || !membership) {
+    throw new ApiError("워크스페이스 접근 권한이 없습니다.", {
+      statusCode: 403,
+      code: "WORKSPACE_FORBIDDEN",
+    });
+  }
+
+  if (!allowedRoles.includes(membership.role)) {
+    throw new ApiError("이 작업을 수행할 권한이 없습니다.", {
+      statusCode: 403,
+      code: "WORKSPACE_ROLE_FORBIDDEN",
+    });
+  }
+
+  return {
+    user: userData.user,
+    membership,
+  };
+}

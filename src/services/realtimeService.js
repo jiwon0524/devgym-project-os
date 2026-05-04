@@ -1,5 +1,11 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient.js";
 
+const activeProjectChannels = new Map();
+
+function getProjectChannelKey(workspaceId, projectId) {
+  return `${workspaceId}:${projectId}`;
+}
+
 function mapPresenceState(state) {
   return Object.values(state || {})
     .flat()
@@ -35,6 +41,34 @@ function getEditingLabel(activeView) {
   return labels[activeView] || "프로젝트";
 }
 
+function buildEditingPayload({ currentUser, activeView }) {
+  return {
+    userId: currentUser?.userId || currentUser?.id,
+    name: currentUser?.name,
+    email: currentUser?.email,
+    role: currentUser?.role,
+    editing: getEditingLabel(activeView),
+    avatarColor: currentUser?.avatarColor,
+    at: new Date().toISOString(),
+  };
+}
+
+export async function broadcastEditingState({ workspaceId, projectId, currentUser, activeView }) {
+  if (!isSupabaseConfigured || !workspaceId || !projectId || !currentUser) return false;
+
+  const channel = activeProjectChannels.get(getProjectChannelKey(workspaceId, projectId));
+  if (!channel) return false;
+
+  const payload = buildEditingPayload({ currentUser, activeView });
+  await channel.track(payload);
+  await channel.send({
+    type: "broadcast",
+    event: "editing",
+    payload,
+  });
+  return true;
+}
+
 export function subscribeToProjectRealtime({
   projectId,
   workspaceId,
@@ -43,6 +77,7 @@ export function subscribeToProjectRealtime({
   onChange,
   onStatusChange,
   onPresenceChange,
+  onBroadcastChange,
 }) {
   if (!isSupabaseConfigured || !projectId || !workspaceId) {
     onStatusChange?.("mock");
@@ -52,6 +87,12 @@ export function subscribeToProjectRealtime({
 
   const channel = supabase
     .channel(`projectos:${workspaceId}:${projectId}`)
+    .on("broadcast", { event: "editing" }, ({ payload }) => {
+      onBroadcastChange?.({
+        ...payload,
+        id: `${payload.userId || payload.email || "user"}-${payload.at || Date.now()}`,
+      });
+    })
     .on("presence", { event: "sync" }, () => {
       onPresenceChange?.(mapPresenceState(channel.presenceState()));
     })
@@ -75,23 +116,30 @@ export function subscribeToProjectRealtime({
       { event: "*", schema: "public", table: "activity_logs", filter: `workspace_id=eq.${workspaceId}` },
       (payload) => onChange?.("activity_logs", payload)
     )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "engineering_documents", filter: `project_id=eq.${projectId}` },
+      (payload) => onChange?.("engineering_documents", payload)
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "engineering_document_versions" },
+      (payload) => onChange?.("engineering_document_versions", payload)
+    )
     .subscribe((status) => {
       onStatusChange?.(status);
       if (status === "SUBSCRIBED" && currentUser) {
-        channel.track({
-          userId: currentUser.userId || currentUser.id,
-          name: currentUser.name,
-          email: currentUser.email,
-          role: currentUser.role,
-          editing: getEditingLabel(activeView),
-          avatarColor: currentUser.avatarColor,
-          at: new Date().toISOString(),
-        });
+        const payload = buildEditingPayload({ currentUser, activeView });
+        channel.track(payload);
+        channel.send({ type: "broadcast", event: "editing", payload });
       }
     });
 
+  activeProjectChannels.set(getProjectChannelKey(workspaceId, projectId), channel);
+
   return () => {
     onPresenceChange?.([]);
+    activeProjectChannels.delete(getProjectChannelKey(workspaceId, projectId));
     supabase.removeChannel(channel);
   };
 }

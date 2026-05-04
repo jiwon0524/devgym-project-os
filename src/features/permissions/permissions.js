@@ -37,6 +37,7 @@ const permissionMatrix = {
     "member.invite",
     "member.manage",
     "requirement.edit",
+    "artifact.save",
     "task.create",
     "task.edit",
     "task.delete",
@@ -51,6 +52,7 @@ const permissionMatrix = {
     "member.invite",
     "member.manage",
     "requirement.edit",
+    "artifact.save",
     "task.create",
     "task.edit",
     "task.delete",
@@ -62,6 +64,7 @@ const permissionMatrix = {
   Member: [
     "workspace.switch",
     "requirement.edit",
+    "artifact.save",
     "task.create",
     "task.edit",
     "comment.create",
