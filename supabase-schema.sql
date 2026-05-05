@@ -1109,3 +1109,40 @@ begin
   alter publication supabase_realtime add table public.engineering_document_versions;
 exception when duplicate_object then null;
 end $$;
+
+-- AI company automation persistence
+create table if not exists public.agent_runs (
+  id uuid primary key default gen_random_uuid(),
+  project_name text not null,
+  command text not null,
+  mission text,
+  selected_agents jsonb not null default '[]'::jsonb,
+  status text not null default 'completed' check (status in ('queued', 'running', 'completed', 'failed')),
+  result jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.deliverables (
+  id uuid primary key default gen_random_uuid(),
+  run_id uuid not null references public.agent_runs(id) on delete cascade,
+  type text not null check (type in ('prd', 'wbs', 'uml', 'api', 'qa', 'risk', 'release', 'integrations', 'final')),
+  title text not null,
+  body text not null,
+  content jsonb not null default '{}'::jsonb,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  run_id uuid references public.agent_runs(id) on delete cascade,
+  title text not null,
+  body text not null,
+  tone text not null default 'info' check (tone in ('success', 'info', 'warning')),
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists agent_runs_created_at_idx on public.agent_runs(created_at desc);
+create index if not exists deliverables_run_type_idx on public.deliverables(run_id, type, sort_order);
+create index if not exists notifications_run_created_idx on public.notifications(run_id, created_at desc);

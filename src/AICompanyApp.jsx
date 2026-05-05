@@ -27,8 +27,8 @@
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const STORAGE_KEY = "ai-company-ops.v8";
-const APP_VERSION = "2026.05.06-api-automation";
+const STORAGE_KEY = "ai-company-ops.v9";
+const APP_VERSION = "2026.05.06-supabase-persistence";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const agents = [
@@ -213,6 +213,15 @@ function buildCollaborativeRun(command, state, reason = "대표 명령") {
   return { selectedIds, messages, log, notifications };
 }
 
+async function requestLatestCompanyRun() {
+  const response = await fetch(`${API_BASE_URL}/api/ai/company-runs/latest`);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error || "최신 자동화 실행을 불러오지 못했습니다.");
+  }
+  return payload.data;
+}
+
 async function requestCompanyRun(command, state) {
   const response = await fetch(`${API_BASE_URL}/api/ai/company-run`, {
     method: "POST",
@@ -247,6 +256,17 @@ function materializeRun(apiRun, command, state, reason) {
     tone: item.tone || "info",
     time: getTime(),
   }));
+  if (apiRun.persisted) {
+    notifications.unshift({
+      id: `n-db-${timestamp}`,
+      title: apiRun.persisted.saved ? "Supabase 저장 완료" : "Supabase 저장 확인 필요",
+      body: apiRun.persisted.saved
+        ? "agent_runs, deliverables, notifications 테이블에 실행 결과를 저장했습니다."
+        : apiRun.persisted.error || "Supabase 저장을 완료하지 못했습니다. 스키마 실행 여부를 확인하세요.",
+      tone: apiRun.persisted.saved ? "success" : "warning",
+      time: getTime(),
+    });
+  }
   const log = {
     id: `log-api-${timestamp}`,
     title: apiRun.automationLog?.title || reason,
@@ -469,17 +489,55 @@ export default function AICompanyApp() {
 
   function reset() {
     localStorage.removeItem(STORAGE_KEY);
-    setState(initialState);
+    setState({ ...initialState, hydrated: false });
     setDraft("");
   }
 
   useEffect(() => {
-    if (!state.bootstrapped && state.automationEnabled) {
+    let cancelled = false;
+    if (state.hydrated) return undefined;
+
+    requestLatestCompanyRun()
+      .then((latest) => {
+        if (cancelled) return;
+        if (latest?.found && latest.data) {
+          const run = materializeRun(latest.data, latest.run?.command || state.mission, state, "Supabase 최신 실행 복구");
+          persist({
+            ...state,
+            projectName: latest.run?.project_name || state.projectName,
+            mission: latest.run?.mission || latest.run?.command || state.mission,
+            activeBoard: "final",
+            activeAgentId: run.selectedIds[run.selectedIds.length - 1] || state.activeAgentId,
+            bootstrapped: true,
+            hydrated: true,
+            processing: false,
+            messages: run.messages.slice(0, 60),
+            notifications: run.notifications.slice(0, 8),
+            automationLog: [run.log].slice(0, 8),
+            generatedArtifacts: run.artifacts || state.generatedArtifacts,
+            done: ["Supabase 최신 실행 복구", "최종본 로드", ...state.done].slice(0, 6),
+            version: APP_VERSION,
+          });
+        } else {
+          persist({ ...state, hydrated: true, version: APP_VERSION });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) persist({ ...state, hydrated: true, version: APP_VERSION });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.hydrated]);
+
+  useEffect(() => {
+    if (state.hydrated && !state.bootstrapped && state.automationEnabled) {
       const timer = window.setTimeout(() => applyRun(state.mission, "초기 자동 운영"), 300);
       return () => window.clearTimeout(timer);
     }
     return undefined;
-  }, [state.bootstrapped, state.automationEnabled]);
+  }, [state.hydrated, state.bootstrapped, state.automationEnabled]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-black text-zinc-100">
@@ -536,6 +594,9 @@ export default function AICompanyApp() {
     </div>
   );
 }
+
+
+
 
 
 

@@ -1,5 +1,6 @@
 ﻿import { analyzeRequirementWithAi } from "../services/aiService.js";
 import { runAiCompanyWorkflow } from "../services/companyAutomationService.js";
+import { fetchLatestCompanyRun, saveCompanyRun } from "../services/companyRunStore.js";
 import { authorizeProjectAccess, getBearerToken } from "../services/supabaseAuthService.js";
 import { assertRateLimit } from "../utils/rateLimiter.js";
 
@@ -7,7 +8,7 @@ function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": process.env.CORS_ORIGIN || "http://127.0.0.1:5173",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
   });
   response.end(JSON.stringify(payload));
@@ -56,8 +57,14 @@ async function handleCompanyRun(request, response) {
       projectName: body.projectName,
       mission: body.mission,
     });
+    const persistence = await saveCompanyRun({
+      command: body.command,
+      projectName: body.projectName,
+      mission: body.mission,
+      result: data,
+    });
 
-    sendJson(response, 200, { success: true, data });
+    sendJson(response, 200, { success: true, data: { ...data, persisted: persistence } });
   } catch (error) {
     const isMissingKey = error.message.includes("OPENAI_API_KEY");
     sendJson(response, isMissingKey ? 503 : 400, {
@@ -70,11 +77,21 @@ async function handleCompanyRun(request, response) {
   }
 }
 
+async function handleLatestCompanyRun(response) {
+  const latest = await fetchLatestCompanyRun();
+  sendJson(response, 200, { success: true, data: latest });
+}
+
 export async function handleAiRoutes(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
 
   if (request.method === "OPTIONS" && url.pathname.startsWith("/api/ai/")) {
     sendJson(response, 204, {});
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/ai/company-runs/latest") {
+    await handleLatestCompanyRun(response);
     return true;
   }
 
