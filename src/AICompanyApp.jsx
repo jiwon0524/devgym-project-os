@@ -1,4 +1,4 @@
-﻿import {
+import {
   AlertTriangle,
   Bell,
   Bot,
@@ -310,7 +310,7 @@ function ArtifactBoard({ boardId, state }) {
   const board = boards.find((item) => item.id === boardId);
   const Icon = board?.icon || FileText;
   return (
-    <div className="h-full overflow-y-auto bg-zinc-950 p-5">
+    <div className="app-scrollbar h-full min-h-0 overflow-y-auto overscroll-contain bg-zinc-950 p-5">
       <div className="mb-4 flex flex-col gap-3 border-b border-zinc-800 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-800 text-yellow-300"><Icon size={20} /></div>
@@ -361,12 +361,12 @@ function IntegrationChecklist() {
 function RightPanel({ state }) {
   const activeAgent = getAgent(state.activeAgentId);
   return (
-    <aside className="hidden w-80 shrink-0 border-l border-zinc-800 bg-zinc-950 xl:block">
-      <div className="border-b border-zinc-800 p-4">
+    <aside className="hidden h-full min-h-0 w-80 shrink-0 flex-col border-l border-zinc-800 bg-zinc-950 xl:flex">
+      <div className="shrink-0 border-b border-zinc-800 p-4">
         <p className="text-xs font-semibold uppercase text-zinc-500">현재 책임 AI</p>
         <div className="mt-3 flex items-center gap-3"><AgentAvatar agent={activeAgent} size="lg" /><div><p className="font-semibold text-white">{activeAgent.name}</p><p className="text-sm text-zinc-400">{activeAgent.specialty}</p></div></div>
       </div>
-      <div className="space-y-4 overflow-y-auto p-4">
+      <div className="app-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
         <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
           <p className="flex items-center gap-2 text-sm font-semibold text-white"><Bell size={16} className="text-yellow-300" />실시간 알림</p>
           <div className="mt-3 space-y-3">
@@ -558,7 +558,7 @@ export default function AICompanyApp() {
         <div className="border-t border-zinc-800 p-3"><button type="button" onClick={reset} className="h-9 w-full rounded-md border border-zinc-700 text-sm text-zinc-300 hover:bg-zinc-900">초기화</button></div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="border-b border-zinc-800 bg-black px-5 py-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -581,10 +581,10 @@ export default function AICompanyApp() {
         <nav className="flex gap-1 overflow-x-auto border-b border-zinc-800 bg-zinc-950 px-4 py-2">{boards.map((board) => { const Icon = board.icon; return <button key={board.id} type="button" onClick={() => updateField("activeBoard", board.id)} className={classNames("inline-flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium", state.activeBoard === board.id ? "bg-yellow-300 text-black" : "text-zinc-300 hover:bg-zinc-800 hover:text-white")}><Icon size={15} />{board.label}</button>; })}</nav>
 
         <section className="flex min-h-0 flex-1">
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {state.activeBoard === "chat" ? <>
               <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3"><div className="flex items-center gap-3"><Hash size={19} className="text-zinc-500" /><div><p className="font-semibold text-white">{activeAgent.channel}</p><p className="text-xs text-zinc-500">{activeAgent.name} · {activeAgent.specialty}</p></div></div><div className="hidden items-center gap-2 text-sm text-zinc-500 sm:flex"><MessageSquare size={16} />응답 {currentMessages.length}개</div></div>
-              <div className="flex-1 overflow-y-auto bg-zinc-950 py-2">{currentMessages.map((message) => <Message key={message.id} message={message} />)}</div>
+              <div className="app-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain bg-zinc-950 py-2">{currentMessages.map((message) => <Message key={message.id} message={message} />)}</div>
               <form onSubmit={sendMessage} className="border-t border-zinc-800 bg-black p-4"><div className="flex items-end gap-3 rounded-xl border border-zinc-700 bg-zinc-950 p-3 focus-within:border-yellow-300"><Brain size={20} className="mt-2 shrink-0 text-yellow-300" /><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="대표 명령 입력: 예) 동의대학교 학사 시스템에서 과제 제출 흐름을 더 실무적으로 만들어줘" className="min-h-11 flex-1 resize-none bg-transparent text-sm leading-6 text-white outline-none placeholder:text-zinc-500" /><button type="submit" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-300 text-black hover:bg-yellow-200" aria-label="보내기"><Send size={17} /></button></div></form>
             </> : <ArtifactBoard boardId={state.activeBoard} state={state} />}
           </div>
@@ -594,12 +594,3 @@ export default function AICompanyApp() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
