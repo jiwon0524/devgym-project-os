@@ -1,4 +1,8 @@
-﻿const SUPABASE_REST_SUFFIX = "/rest/v1";
+const SUPABASE_REST_SUFFIX = "/rest/v1";
+
+function normalizeSupabaseUrl(url) {
+  return url.replace(/\/$/, "").replace(/\/rest\/v1$/, "");
+}
 
 function getSupabaseConfig() {
   const url = process.env.SUPABASE_URL;
@@ -7,7 +11,7 @@ function getSupabaseConfig() {
     return null;
   }
   return {
-    restUrl: `${url.replace(/\/$/, "")}${SUPABASE_REST_SUFFIX}`,
+    restUrl: `${normalizeSupabaseUrl(url)}${SUPABASE_REST_SUFFIX}`,
     serviceKey,
   };
 }
@@ -151,4 +155,3 @@ export async function fetchLatestCompanyRun() {
     },
   };
 }
-
