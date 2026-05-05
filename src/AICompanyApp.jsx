@@ -1,472 +1,126 @@
-import {
-  AlertTriangle,
-  Bell,
-  Bot,
-  Brain,
-  CheckCircle2,
-  Code2,
-  Database,
-  FileText,
-  GitBranch,
-  Hash,
-  Layers3,
-  ListChecks,
-  Megaphone,
-  MessageSquare,
-  Network,
-  PenTool,
-  Rocket,
-  Search,
-  Send,
-  ShieldCheck,
-  Table2,
-  Target,
-  TestTube2,
-  Users,
-} from "lucide-react";
+import { AlertTriangle, Bell, Bot, Brain, CheckCircle2, Code2, Database, Download, FileText, GitBranch, Hash, Layers3, ListChecks, Megaphone, MessageSquare, Network, PenTool, Plus, Rocket, Search, Send, ShieldCheck, Table2, Target, TestTube2, UserRound } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const STORAGE_KEY = "ai-company-ops.v10";
-const APP_VERSION = "2026.05.06-production-workflow";
+const STORAGE_KEY = "ai-company-ops.v16";
+const APP_VERSION = "2026.05.06-production-ready";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
+const userProfile = { id: "user", name: "JIWON", role: "요청자", icon: UserRound, color: "bg-zinc-600" };
 const agents = [
-  { id: "ceo", name: "총괄관리AI", role: "총괄", title: "우선순위/승인", icon: Megaphone, color: "bg-orange-500", channel: "#총괄-운영", specialty: "범위, 우선순위, 승인 기준 관리" },
-  { id: "strategy", name: "전략기획AI", role: "전략", title: "MVP/지표", icon: Target, color: "bg-sky-500", channel: "#전략-기획", specialty: "사용자 문제, MVP 범위, 성공 지표" },
-  { id: "pm", name: "요구사항AI", role: "PM", title: "PRD/요구사항", icon: FileText, color: "bg-blue-500", channel: "#요구사항-prd", specialty: "요구사항, 수용 기준, 변경 영향" },
-  { id: "ux", name: "UX설계AI", role: "UX", title: "화면/UML", icon: PenTool, color: "bg-pink-500", channel: "#ux-uml", specialty: "사용자 흐름, 화면 IA, UML" },
-  { id: "arch", name: "기술설계AI", role: "아키텍트", title: "API/DB/보안", icon: Layers3, color: "bg-emerald-500", channel: "#기술-설계", specialty: "아키텍처, API, DB, 권한" },
-  { id: "dev", name: "개발관리AI", role: "개발", title: "WBS/GitHub", icon: Code2, color: "bg-violet-500", channel: "#개발-wbs", specialty: "작업 분해, 이슈, PR 연결" },
-  { id: "qa", name: "품질검증AI", role: "QA", title: "TC/릴리즈", icon: TestTube2, color: "bg-amber-500", channel: "#qa-검증", specialty: "테스트 케이스, 결함, 릴리즈 게이트" },
-  { id: "ops", name: "운영관리AI", role: "운영", title: "배포/모니터링", icon: Rocket, color: "bg-cyan-500", channel: "#운영-배포", specialty: "배포, 알림, API 연결 상태" },
+  { id: "ceo", name: "총괄관리AI", role: "총괄", title: "범위와 승인", icon: Megaphone, color: "bg-orange-500", specialty: "목표 정리, 우선순위, 최종 보고" },
+  { id: "strategy", name: "전략기획AI", role: "기획", title: "MVP와 지표", icon: Target, color: "bg-sky-500", specialty: "문제 정의, 사용자 가치, 성공 지표" },
+  { id: "pm", name: "요구사항AI", role: "PM", title: "PRD와 요구사항", icon: FileText, color: "bg-blue-500", specialty: "요구사항, 수용 기준, 변경 영향" },
+  { id: "ux", name: "UX설계AI", role: "UX", title: "화면과 UML", icon: PenTool, color: "bg-pink-500", specialty: "사용자 흐름, 화면 IA, UML" },
+  { id: "arch", name: "기술설계AI", role: "아키텍트", title: "API와 DB", icon: Layers3, color: "bg-emerald-500", specialty: "아키텍처, API, DB, 권한" },
+  { id: "dev", name: "개발관리AI", role: "개발", title: "WBS와 GitHub", icon: Code2, color: "bg-violet-500", specialty: "작업 분해, 이슈, PR 연결" },
+  { id: "qa", name: "품질검증AI", role: "QA", title: "테스트와 릴리즈", icon: TestTube2, color: "bg-amber-500", specialty: "테스트 케이스, 시뮬레이션, 결함 관리" },
+  { id: "ops", name: "운영관리AI", role: "운영", title: "배포와 알림", icon: Rocket, color: "bg-cyan-500", specialty: "배포, 알림, API 연결 상태" },
 ];
-
 const boards = [
-  { id: "chat", label: "업무 대화", icon: MessageSquare },
-  { id: "prd", label: "요구서", icon: FileText },
-  { id: "wbs", label: "WBS", icon: Table2 },
-  { id: "uml", label: "UML", icon: Network },
-  { id: "api", label: "API/DB", icon: Database },
-  { id: "qa", label: "QA", icon: TestTube2 },
-  { id: "risk", label: "리스크", icon: AlertTriangle },
-  { id: "release", label: "릴리즈", icon: ShieldCheck },
-  { id: "integrations", label: "연결 상태", icon: GitBranch },
-  { id: "final", label: "최종본", icon: CheckCircle2 },
+  { id: "chat", label: "업무 대화", icon: MessageSquare }, { id: "files", label: "파일함", icon: FileText }, { id: "prd", label: "요구사항", icon: FileText }, { id: "wbs", label: "WBS", icon: Table2 },
+  { id: "uml", label: "UML", icon: Network }, { id: "api", label: "API/DB", icon: Database }, { id: "qa", label: "QA", icon: TestTube2 },
+  { id: "risk", label: "리스크", icon: AlertTriangle }, { id: "release", label: "릴리즈", icon: ShieldCheck }, { id: "integrations", label: "연결 상태", icon: GitBranch }, { id: "final", label: "최종본", icon: CheckCircle2 },
 ];
-
-const defaultProjects = [
-  {
-    id: "project-academic-os",
-    name: "동의대학교 학사 협업 OS",
-    mission: "학생, 교수, 조교가 공지, 과제, 출결, 상담, 알림을 한 곳에서 관리하는 학사 SaaS를 만든다.",
-  },
-];
-
-function getTime() {
-  return new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" }).format(new Date());
-}
-
-function classNames(...values) {
-  return values.filter(Boolean).join(" ");
-}
-
-function getAgent(id) {
-  return agents.find((agent) => agent.id === id) || agents[0];
-}
-
-function isUsableText(value) {
-  return typeof value === "string" && value.trim().length > 0 && !/[�]/.test(value) && !/\?{2,}/.test(value);
-}
-
-function makeFallbackArtifacts(state) {
-  const project = state.projectName || "프로젝트";
-  return {
-    prd: [
-      { title: "문제 정의", body: `${project}의 사용자는 여러 채널에 흩어진 일정, 과제, 공지, 의사결정을 한 곳에서 추적해야 합니다.` },
-      { title: "핵심 사용자", body: "학생, 교수, 조교, 관리자를 역할별로 나누고 각 역할의 읽기/쓰기 권한을 분리합니다." },
-      { title: "수용 기준", body: "사용자는 로그인 후 오늘 처리해야 할 업무와 미확인 알림을 즉시 확인할 수 있어야 합니다." },
-    ],
-    wbs: [
-      { title: "TASK-001 인증/권한", body: "사용자 역할, 워크스페이스, RLS 정책을 설계합니다." },
-      { title: "TASK-002 산출물 저장", body: "agent_runs, deliverables, notifications 저장 흐름을 구현합니다." },
-      { title: "TASK-003 알림/검색", body: "실시간 알림 목록과 산출물 검색 기능을 연결합니다." },
-    ],
-    uml: [
-      { title: "Use Case", body: "사용자는 프로젝트 선택, 명령 입력, 산출물 확인, 알림 확인, 최종본 검토를 수행합니다." },
-      { title: "ERD", body: "agent_runs 1:N deliverables, agent_runs 1:N notifications 구조입니다." },
-    ],
-    api: [
-      { title: "POST /api/ai/company-run", body: "명령을 받아 AI 직원 실행, 산출물 생성, Supabase 저장을 처리합니다." },
-      { title: "GET /api/ai/company-runs/latest", body: "Supabase에 저장된 최신 실행 결과를 불러옵니다." },
-      { title: "GET /api/ai/status", body: "OpenAI, Supabase, GitHub, Kakao 연결 상태를 확인합니다." },
-    ],
-    qa: [
-      { title: "저장 검증", body: "명령 실행 후 agent_runs, deliverables, notifications에 데이터가 생성되는지 확인합니다." },
-      { title: "입력 검증", body: "Enter는 전송, Shift+Enter는 줄바꿈으로 동작해야 합니다." },
-    ],
-    risk: [
-      { title: "비밀키 노출", body: "OpenAI/Supabase secret key는 브라우저와 GitHub에 올라가면 안 됩니다." },
-      { title: "자동화 신뢰성", body: "AI 산출물은 최종 승인 전까지 검토 필요 상태로 관리합니다." },
-    ],
-    release: [
-      { title: "로컬 운영", body: "API 서버와 웹 서버를 함께 실행해야 전체 기능이 동작합니다." },
-      { title: "배포 전 확인", body: "환경변수, Supabase RLS, API 호출 제한, 로그 정책을 확인합니다." },
-    ],
-    integrations: [
-      { title: "OpenAI", body: "AI 직원 응답과 산출물 생성을 담당합니다." },
-      { title: "Supabase", body: "실행 기록, 산출물, 알림을 저장합니다." },
-      { title: "GitHub", body: "이슈, PR, TASK ID 연결을 위해 다음 단계에서 붙입니다." },
-    ],
-    final: [
-      { title: "최종 요약", body: `${project}는 명령, AI 실행, 산출물, 알림, 최종본을 DB에 남기는 프로젝트 운영 시스템입니다.` },
-      { title: "다음 작업", body: "GitHub App 연결, 프로젝트별 실행 기록 필터, 사용자 인증 기반 권한 분리를 진행합니다." },
-    ],
-  };
-}
-
-const initialState = {
-  version: APP_VERSION,
-  projects: defaultProjects,
-  activeProjectId: defaultProjects[0].id,
-  projectName: defaultProjects[0].name,
-  mission: defaultProjects[0].mission,
-  activeAgentId: "ceo",
-  activeBoard: "chat",
-  bootstrapped: false,
-  hydrated: false,
-  processing: false,
-  messages: [],
-  notifications: [{ id: "n-ready", title: "작업 준비 완료", body: "프로젝트를 선택하고 명령을 입력하면 실행 기록과 산출물이 저장됩니다.", time: getTime(), tone: "info" }],
-  automationLog: [],
-  generatedArtifacts: null,
-  apiStatus: null,
+const defaultProject = { id: "project-academic-os", name: "동의대학교 학사 협업 시스템", mission: "학생, 교수, 조교, 관리자가 공지, 과제, 출결, 상담, 알림을 한 곳에서 처리하는 학사 SaaS를 만든다." };
+const defaultArtifacts = {
+  prd: [{ title: "요구사항명세서.md", body: "역할별 사용자, 수용 기준, 예외 흐름, 변경 영향 분석을 포함합니다." }],
+  wbs: [{ title: "WBS-Implementation.md", body: "TASK-001 권한, TASK-002 과제 제출, TASK-003 알림/감사 로그로 분해합니다." }],
+  uml: [{ title: "UseCase-학사도구.puml", body: "학생, 교수, 조교, 관리자의 유스케이스를 정의합니다." }, { title: "ERD-학사도구.md", body: "users, courses, assignments, submissions, notifications, audit_logs를 연결합니다." }],
+  api: [{ title: "API-DB-Spec.md", body: "인증, 과제, 출결, 상담, 공지, 알림 API와 RLS 정책을 정의합니다." }],
+  qa: [{ title: "QA-Simulation-Report.md", body: "정상/예외/권한/알림 흐름을 시뮬레이션합니다." }],
+  risk: [{ title: "Risk-Register.md", body: "개인정보, 권한 오설정, 알림 누락, 마감 정책 혼선을 추적합니다." }],
+  release: [{ title: "Release-Checklist.md", body: "환경변수, DB 마이그레이션, RLS, QA 승인, 롤백 절차를 확인합니다." }],
+  integrations: [{ title: "OpenAI", body: "AI 직원의 분석과 산출물 생성을 담당합니다." }, { title: "Supabase", body: "실행 기록, 산출물, 알림을 저장합니다." }, { title: "GitHub", body: "Issue, PR, TASK ID 연결 대상입니다." }],
+  final: [{ title: "최종보고서.md", body: "요구사항, UML, ERD, API/DB, WBS, QA, 릴리즈 체크리스트를 묶은 검토본입니다." }],
 };
+const initialState = { version: APP_VERSION, projects: [defaultProject], activeProjectId: defaultProject.id, projectName: defaultProject.name, mission: defaultProject.mission, activeBoard: "chat", processing: false, hydrated: false, messages: [], notifications: [{ id: "ready", title: "업무 본부 준비 완료", body: "명령을 입력하면 AI 직원들이 역할별로 검토하고 산출물을 생성합니다.", tone: "info", time: getTime() }], automationLog: [], generatedArtifacts: defaultArtifacts, apiStatus: null };
 
-function selectAgentsForCommand(command) {
+function getTime() { return new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" }).format(new Date()); }
+function classNames(...v) { return v.filter(Boolean).join(" "); }
+function profile(id) { return id === "user" ? userProfile : agents.find((agent) => agent.id === id) || agents[0]; }
+function activeProject(state) { return state.projects.find((project) => project.id === state.activeProjectId) || state.projects[0]; }
+function selectAgents(command) {
   const text = command.toLowerCase();
-  if (text.includes("api") || text.includes("연동") || text.includes("github") || text.includes("깃허브")) return ["ceo", "arch", "dev", "ops", "qa"];
-  if (text.includes("uml") || text.includes("설계") || text.includes("erd")) return ["ceo", "ux", "arch", "pm"];
-  if (text.includes("테스트") || text.includes("qa") || text.includes("릴리즈")) return ["ceo", "qa", "dev", "ops"];
-  return ["ceo", "strategy", "pm", "ux", "arch", "dev", "qa", "ops"];
+  if (text.includes("api") || text.includes("db") || text.includes("github") || text.includes("깃허브")) return ["ceo", "arch", "dev", "ops", "qa"];
+  if (text.includes("uml") || text.includes("erd") || text.includes("설계")) return ["ceo", "pm", "ux", "arch", "qa"];
+  return agents.map((agent) => agent.id);
 }
-
-function buildLocalRun(command, state, reason = "로컬 실행") {
-  const selectedIds = selectAgentsForCommand(command);
-  const timestamp = Date.now();
-  const messages = selectedIds.map((agentId, index) => ({
-    id: `${agentId}-${timestamp}-${index}`,
-    agentId,
-    body: `${getAgent(agentId).name}가 '${command}'에 대한 담당 산출물을 정리했습니다.`,
-    tasks: ["요구사항 검토", "산출물 갱신", "검토 항목 기록"],
-    time: getTime(),
-  }));
-  return {
-    selectedIds,
-    messages,
-    notifications: [{ id: `n-${timestamp}`, title: "로컬 산출물 생성", body: "API 응답 대신 로컬 규칙으로 산출물을 갱신했습니다.", tone: "warning", time: getTime() }],
-    log: { id: `log-${timestamp}`, title: reason, body: `${selectedIds.map((id) => getAgent(id).name).join(" → ")} 순서로 처리했습니다.`, time: getTime() },
-    artifacts: makeFallbackArtifacts(state),
-  };
-}
-
-async function requestJson(path, options) {
-  const response = await fetch(`${API_BASE_URL}${path}`, options);
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload.success === false) throw new Error(payload.error || "API 요청에 실패했습니다.");
-  return payload.data;
-}
-
-async function requestLatestCompanyRun() {
-  return requestJson("/api/ai/company-runs/latest");
-}
-
-async function requestIntegrationStatus() {
-  return requestJson("/api/ai/status");
-}
-
-async function requestCompanyRun(command, state) {
-  return requestJson("/api/ai/company-run", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ command, projectName: state.projectName, mission: state.mission }),
-  });
-}
-
-function materializeRun(apiRun, command, state, reason) {
-  const timestamp = Date.now();
-  const selectedIds = apiRun.selectedAgents?.length ? apiRun.selectedAgents : selectAgentsForCommand(command);
-  const messages = (apiRun.messages || []).map((message, index) => ({
-    id: `${message.agentId || selectedIds[index] || "ceo"}-${timestamp}-${index}`,
-    agentId: message.agentId || selectedIds[index] || "ceo",
-    body: message.body || "산출물을 정리했습니다.",
-    tasks: Array.isArray(message.tasks) && message.tasks.length ? message.tasks : ["산출물 정리"],
-    time: getTime(),
-  }));
-  const notifications = (apiRun.notifications || []).map((item, index) => ({
-    id: `n-api-${timestamp}-${index}`,
-    title: item.title || "산출물 생성",
-    body: item.body || "산출물을 업데이트했습니다.",
-    tone: item.tone || "info",
-    time: getTime(),
-  }));
-  if (apiRun.persisted) {
-    notifications.unshift({
-      id: `n-db-${timestamp}`,
-      title: apiRun.persisted.saved ? "Supabase 저장 완료" : "Supabase 저장 확인 필요",
-      body: apiRun.persisted.saved ? "실행 기록, 산출물, 알림이 DB에 저장되었습니다." : apiRun.persisted.error || "Supabase 저장을 확인해야 합니다.",
-      tone: apiRun.persisted.saved ? "success" : "warning",
-      time: getTime(),
-    });
-  }
-  return {
-    selectedIds,
-    messages,
-    notifications,
-    log: { id: `log-api-${timestamp}`, title: apiRun.automationLog?.title || reason, body: apiRun.automationLog?.body || "AI 실행이 완료되었습니다.", time: getTime() },
-    artifacts: apiRun.artifacts || state.generatedArtifacts || makeFallbackArtifacts(state),
-  };
-}
-
-function AgentAvatar({ agent, size = "md" }) {
-  const Icon = agent.icon;
-  return <div className={classNames("flex shrink-0 items-center justify-center rounded-md text-white", agent.color, size === "lg" ? "h-11 w-11" : "h-8 w-8")}><Icon size={size === "lg" ? 22 : 17} /></div>;
-}
-
-function Message({ message }) {
-  const agent = getAgent(message.agentId);
-  return (
-    <article className="flex gap-3 px-5 py-4 hover:bg-zinc-900/70">
-      <AgentAvatar agent={agent} size="lg" />
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h3 className="font-semibold text-white">{agent.name}</h3>
-          <span className="text-xs text-zinc-500">{agent.role} · {agent.title}</span>
-          <span className="text-xs text-zinc-500">{message.time}</span>
-        </div>
-        <p className="mt-2 text-sm leading-6 text-zinc-200">{message.body}</p>
-        <div className="mt-3 rounded-lg border border-zinc-700 bg-zinc-950 p-3">
-          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase text-zinc-400"><CheckCircle2 size={14} />실행 항목</p>
-          <ul className="space-y-1.5">
-            {message.tasks.map((task) => <li key={task} className="flex gap-2 text-sm text-zinc-300"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-300" />{task}</li>)}
-          </ul>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function statusLabel(item) {
-  if (!item) return { text: "확인 중", className: "bg-zinc-800 text-zinc-300" };
-  if (item.connected) return { text: "연결됨", className: "bg-emerald-400/10 text-emerald-300" };
-  if (item.configured) return { text: "설정됨", className: "bg-yellow-400/10 text-yellow-300" };
-  return { text: "미연결", className: "bg-zinc-800 text-zinc-400" };
-}
-
-function IntegrationChecklist({ apiStatus }) {
-  const rows = [
-    { key: "openai", name: "OpenAI API", detail: "AI 직원 응답과 산출물 생성을 담당합니다." },
-    { key: "supabase", name: "Supabase", detail: "agent_runs, deliverables, notifications 저장소입니다." },
-    { key: "github", name: "GitHub App", detail: "Issue, PR, TASK ID 연결용입니다." },
-    { key: "kakao", name: "Kakao", detail: "혼자 쓰는 단계에서는 선택 사항입니다." },
+function file(name, board) { return { name, board }; }
+function workflowMessages(command, selected, apiMessages = []) {
+  const t = Date.now();
+  const base = [
+    { id: `user-${t}`, agentId: "user", body: command, tasks: ["업무 요청", "최종 승인자 JIWON"], time: getTime() },
+    { id: `ceo-${t}`, agentId: "ceo", body: "요청을 접수했습니다. 담당 AI에게 병렬로 작업을 배정하고 최종본 기준을 정리합니다.", tasks: ["범위 확인", "담당 배정", "최종본 기준 정의"], files: [file("실행계획.md", "final")], time: getTime() },
+    { id: `pm-${t}`, agentId: "pm", body: "요구사항을 검증 가능한 문장으로 정리하고 수용 기준을 붙였습니다.", tasks: ["PRD 작성", "수용 기준 작성", "변경 영향 표시"], files: [file("요구사항명세서.md", "prd")], time: getTime() },
+    { id: `ux-${t}`, agentId: "ux", body: "사용자 흐름 기준으로 Use Case와 화면 흐름을 정리했습니다.", tasks: ["Use Case", "Sequence", "화면 흐름"], files: [file("UseCase-학사도구.puml", "uml")], time: getTime() },
+    { id: `arch-${t}`, agentId: "arch", body: "ERD, API, 권한 정책을 연결했습니다.", tasks: ["ERD", "API 목록", "RLS 정책"], files: [file("ERD-학사도구.md", "uml"), file("API-DB-Spec.md", "api")], time: getTime() },
+    { id: `dev-${t}`, agentId: "dev", body: "구현 가능한 단위로 WBS와 TASK ID를 만들었습니다.", tasks: ["TASK-001 권한", "TASK-002 과제", "TASK-003 알림"], files: [file("WBS-Implementation.md", "wbs")], time: getTime() },
+    { id: `qa-${t}`, agentId: "qa", body: "시뮬레이션 테스트를 실행했습니다. 정상, 예외, 권한, 알림 흐름을 점검합니다.", tasks: ["정상 흐름", "예외 흐름", "권한 흐름", "알림 흐름"], files: [file("QA-Simulation-Report.md", "qa")], time: getTime() },
+    { id: `ops-${t}`, agentId: "ops", body: "산출물 업로드 목록과 운영 알림을 정리했습니다.", tasks: ["알림 발행", "최종본 묶기", "연결 상태 확인"], files: [file("Release-Checklist.md", "release"), file("최종보고서.md", "final")], time: getTime() },
+    { id: `final-${t}`, agentId: "ceo", body: "JIWON님 확인용 최종본을 준비했습니다. 탭별 산출물을 검토할 수 있습니다.", tasks: ["최종 검토 대기", "보완 요청 가능"], files: [file("최종보고서.md", "final")], time: getTime() },
   ];
-  return (
-    <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-      <p className="flex items-center gap-2 text-sm font-semibold text-white"><GitBranch size={16} className="text-yellow-300" />API 연결 상태</p>
-      <div className="mt-3 space-y-3">
-        {rows.map((row) => {
-          const status = statusLabel(apiStatus?.[row.key]);
-          return <div key={row.key} className="rounded-md border border-zinc-800 bg-black p-3"><div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-zinc-100">{row.name}</p><span className={classNames("rounded-full px-2 py-1 text-xs", status.className)}>{status.text}</span></div><p className="mt-2 text-xs leading-5 text-zinc-500">{apiStatus?.[row.key]?.error || row.detail}</p></div>;
-        })}
-      </div>
-    </section>
-  );
+  const api = apiMessages.filter((m) => m?.body).map((m, i) => ({ id: `api-${t}-${i}`, agentId: m.agentId || selected[i] || "ceo", body: m.body, tasks: Array.isArray(m.tasks) ? m.tasks : ["AI API 분석 반영"], time: getTime() }));
+  return [...base, ...api].filter((m) => selected.includes(m.agentId) || ["user", "ceo"].includes(m.agentId));
+}
+function normalizeArtifacts(artifacts) { return artifacts && typeof artifacts === "object" ? { ...defaultArtifacts, ...artifacts } : defaultArtifacts; }
+function allFiles(artifacts = {}) {
+  return Object.entries(artifacts).flatMap(([type, rows]) => (Array.isArray(rows) ? rows.map((row) => ({ ...row, type })) : []));
+}
+function downloadArtifact(item, projectName) {
+  const safeName = String(item.title || "artifact.md").replace(/[\\/:*?"<>|]/g, "-");
+  const filename = safeName.includes(".") ? safeName : safeName + ".md";
+  const content = ["# " + (item.title || "산출물"), "", "프로젝트: " + (projectName || "ProjectOS"), "유형: " + (item.type || "artifact"), "생성: " + new Date().toLocaleString("ko-KR"), "", item.body || ""].join("\n");
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+function localRun(command, state, reason = "명령 실행") {
+  const selected = selectAgents(command);
+  const t = Date.now();
+  return { selectedAgents: selected, messages: workflowMessages(command, selected), artifacts: normalizeArtifacts(state.generatedArtifacts), notifications: [{ id: `sim-${t}`, title: "시뮬레이션 점검 완료", body: "정상/예외/권한/알림 흐름을 검토했습니다.", tone: "info", time: getTime() }, { id: `file-${t}`, title: "파일 업로드 완료", body: "요구사항, UML, ERD, API/DB, QA 보고서가 최종본에 연결되었습니다.", tone: "success", time: getTime() }], log: { id: `log-${t}`, title: reason, body: `${selected.map((id) => profile(id).name).join(" → ")} 순서로 업무를 처리했습니다.`, time: getTime() } };
+}
+async function requestJson(path, options = {}) { const res = await fetch(`${API_BASE_URL}${path}`, options); const json = await res.json().catch(() => ({})); if (!res.ok || json.success === false) throw new Error(json.error || "API 요청에 실패했습니다."); return json.data; }
+async function requestStatus() { return requestJson("/api/ai/status"); }
+async function requestLatest(projectName) { return requestJson(`/api/ai/company-runs/latest?projectName=${encodeURIComponent(projectName)}`); }
+async function requestRun(command, state) { return requestJson("/api/ai/company-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ command, projectName: state.projectName, mission: state.mission }) }); }
+function materialize(apiRun, command, state, reason) {
+  const selected = apiRun?.selectedAgents?.length ? apiRun.selectedAgents : selectAgents(command);
+  const base = localRun(command, state, reason);
+  return { ...base, selectedAgents: selected, messages: workflowMessages(command, selected, apiRun?.messages || []), artifacts: normalizeArtifacts(apiRun?.artifacts), notifications: [...(apiRun?.persisted ? [{ id: `db-${Date.now()}`, title: apiRun.persisted.saved ? "Supabase 저장 완료" : "Supabase 저장 확인 필요", body: apiRun.persisted.saved ? "실행 기록, 산출물, 알림을 DB에 저장했습니다." : apiRun.persisted.error || "저장 상태를 확인하세요.", tone: apiRun.persisted.saved ? "success" : "warning", time: getTime() }] : []), ...base.notifications, ...(apiRun?.notifications || []).map((n, i) => ({ id: `api-n-${Date.now()}-${i}`, title: n.title, body: n.body, tone: n.tone || "info", time: getTime() }))], log: { id: `api-log-${Date.now()}`, title: reason, body: apiRun?.automationLog?.body || "명령 접수부터 산출물 생성, 시뮬레이션, 저장까지 처리했습니다.", time: getTime() } };
 }
 
+function Message({ message }) { const p = profile(message.agentId); const Icon = p.icon; return <article className={classNames("border-b border-zinc-900 px-5 py-4", message.agentId === "user" ? "bg-zinc-900/70" : "hover:bg-zinc-900/40")}><div className="flex gap-3"><div className={classNames("flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-white", p.color)}><Icon size={18} /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="font-semibold text-white">{p.name}</span><span className="rounded bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">{p.role}</span><span className="text-xs text-zinc-500">{message.time}</span></div><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-200">{message.body}</p><ul className="mt-3 grid gap-1.5 sm:grid-cols-2">{(message.tasks || []).map((task) => <li key={task} className="flex gap-2 text-sm text-zinc-300"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-300" />{task}</li>)}</ul>{message.files?.length ? <div className="mt-3 flex flex-wrap gap-2">{message.files.map((f) => <span key={`${f.board}-${f.name}`} className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-black px-2.5 py-1 text-xs font-medium text-zinc-200"><FileText size={13} className="text-yellow-300" />{f.name}</span>)}</div> : null}</div></div></article>; }
 function ArtifactBoard({ boardId, state, searchQuery }) {
-  const artifacts = { ...makeFallbackArtifacts(state), ...(state.generatedArtifacts || {}) };
+  const board = boards.find((b) => b.id === boardId) || boards[0];
+  const Icon = board.icon;
   const query = searchQuery.trim().toLowerCase();
-  const rows = (artifacts[boardId] || []).filter((row) => !query || `${row.title} ${row.body}`.toLowerCase().includes(query));
-  const board = boards.find((item) => item.id === boardId);
-  const Icon = board?.icon || FileText;
-  return (
-    <div className="app-scrollbar h-full min-h-0 overflow-y-auto overscroll-contain bg-zinc-950 p-5">
-      <div className="mb-4 flex flex-col gap-3 border-b border-zinc-800 pb-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-800 text-yellow-300"><Icon size={20} /></div><div><h2 className="text-lg font-semibold text-white">{board?.label} 산출물</h2><p className="text-sm text-zinc-500">{state.projectName} 기준 산출물입니다.</p></div></div>
-        {boardId === "final" && <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-sm font-semibold text-emerald-300">검토용 최종본</span>}
-      </div>
-      <div className="grid gap-3 lg:grid-cols-2">
-        {rows.map((row) => <article key={`${row.title}-${row.body}`} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4"><h3 className="text-sm font-semibold text-white">{row.title}</h3><p className="mt-2 text-sm leading-6 text-zinc-300">{row.body}</p></article>)}
-      </div>
-      {rows.length === 0 && <p className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">검색 결과가 없습니다.</p>}
-    </div>
-  );
+  if (boardId === "integrations") return <div className="app-scrollbar min-h-0 flex-1 overflow-y-auto bg-zinc-950 p-5"><div className="mb-5 flex items-center gap-3"><Icon className="text-yellow-300" /><div><h3 className="text-lg font-bold text-white">연결 상태</h3><p className="text-sm text-zinc-500">연결한 API와 앞으로 연결할 API를 확인합니다.</p></div></div><div className="grid gap-3 md:grid-cols-2">{["openai", "supabase", "github", "kakao"].map((key) => { const row = state.apiStatus?.[key]; const ok = Boolean(row?.connected || (key === "openai" && row?.configured)); return <div key={key} className="rounded-md border border-zinc-800 bg-black p-4"><div className="flex items-center justify-between"><p className="font-semibold text-white">{key.toUpperCase()}</p><span className={classNames("rounded-full px-2 py-1 text-xs font-bold", ok ? "bg-emerald-400/15 text-emerald-300" : "bg-zinc-800 text-zinc-400")}>{ok ? "연결됨" : "대기"}</span></div><p className="mt-3 text-sm text-zinc-400">{row?.error || "연결 상태를 확인했습니다."}</p></div>; })}</div></div>;
+  const sourceRows = boardId === "files" ? allFiles(state.generatedArtifacts) : (state.generatedArtifacts?.[boardId] || []).map((item) => ({ ...item, type: boardId }));
+  const rows = sourceRows.filter((item) => !query || (String(item.title) + " " + String(item.body) + " " + String(item.type)).toLowerCase().includes(query));
+  return <div className="app-scrollbar min-h-0 flex-1 overflow-y-auto bg-zinc-950 p-5"><div className="mb-5 flex flex-col gap-3 border-b border-zinc-800 pb-4 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><Icon className="text-yellow-300" /><div><h3 className="text-lg font-bold text-white">{board.label}</h3><p className="text-sm text-zinc-500">직원들이 보낸 파일을 열람하고 Markdown 파일로 다운로드합니다.</p></div></div><span className="rounded-full bg-zinc-900 px-3 py-1 text-sm font-semibold text-zinc-300">파일 {rows.length}개</span></div><div className="grid gap-3 lg:grid-cols-2">{rows.map((item) => <article key={`${item.type}-${item.title}`} className="rounded-md border border-zinc-800 bg-black p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="font-semibold text-white">{item.title}</h4><span className="rounded bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">{boards.find((b) => b.id === item.type)?.label || item.type}</span></div><p className="mt-2 text-sm leading-6 text-zinc-400">{item.body}</p></div><button type="button" onClick={() => downloadArtifact(item, state.projectName)} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-zinc-700 px-3 text-xs font-semibold text-zinc-200 hover:border-yellow-300 hover:text-yellow-300"><Download size={14} />다운로드</button></div></article>)}</div>{!rows.length ? <p className="rounded-md border border-zinc-800 bg-black p-4 text-sm text-zinc-500">확인할 파일이 없습니다.</p> : null}</div>;
 }
-
-function RightPanel({ state }) {
-  const activeAgent = getAgent(state.activeAgentId);
-  return (
-    <aside className="hidden h-full min-h-0 w-80 shrink-0 flex-col border-l border-zinc-800 bg-zinc-950 xl:flex">
-      <div className="shrink-0 border-b border-zinc-800 p-4"><p className="text-xs font-semibold uppercase text-zinc-500">현재 담당</p><div className="mt-3 flex items-center gap-3"><AgentAvatar agent={activeAgent} size="lg" /><div><p className="font-semibold text-white">{activeAgent.name}</p><p className="text-sm text-zinc-400">{activeAgent.specialty}</p></div></div></div>
-      <div className="app-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
-        <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-4"><p className="flex items-center gap-2 text-sm font-semibold text-white"><Bell size={16} className="text-yellow-300" />실시간 알림</p><div className="mt-3 space-y-3">{state.notifications.map((item) => <div key={item.id} className="rounded-md border border-zinc-800 bg-black p-3"><p className="text-sm font-semibold text-zinc-100">{item.title}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{item.body}</p><p className="mt-2 text-xs text-zinc-600">{item.time}</p></div>)}</div></section>
-        <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-4"><p className="flex items-center gap-2 text-sm font-semibold text-white"><ListChecks size={16} className="text-emerald-400" />자동화 로그</p><div className="mt-3 space-y-3">{state.automationLog.map((item) => <div key={item.id} className="rounded-md border border-zinc-800 bg-black p-3"><p className="text-sm font-semibold text-zinc-100">{item.title}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{item.body}</p><p className="mt-2 text-xs text-zinc-600">{item.time}</p></div>)}</div></section>
-        <IntegrationChecklist apiStatus={state.apiStatus} />
-      </div>
-    </aside>
-  );
-}
+function RightPanel({ state }) { return <aside className="hidden w-80 shrink-0 border-l border-zinc-800 bg-black xl:flex xl:min-h-0 xl:flex-col"><div className="border-b border-zinc-800 p-4"><p className="text-sm font-bold text-white">실시간 운영 로그</p><p className="mt-1 text-xs text-zinc-500">알림과 실행 기록은 스크롤해서 확인합니다.</p></div><div className="app-scrollbar min-h-0 flex-1 overflow-y-auto p-4"><section><div className="mb-3 flex items-center gap-2 text-sm font-semibold text-zinc-300"><Bell size={16} />알림</div><div className="space-y-3">{state.notifications.map((n) => <div key={n.id} className="rounded-md border border-zinc-800 bg-zinc-950 p-3"><p className="text-sm font-semibold text-white">{n.title}</p><p className="mt-1 text-xs leading-5 text-zinc-400">{n.body}</p><p className="mt-2 text-[11px] text-zinc-600">{n.time}</p></div>)}</div></section><section className="mt-6"><div className="mb-3 flex items-center gap-2 text-sm font-semibold text-zinc-300"><ListChecks size={16} />실행 기록</div><div className="space-y-3">{state.automationLog.map((log) => <div key={log.id} className="rounded-md border border-zinc-800 bg-zinc-950 p-3"><p className="text-sm font-semibold text-white">{log.title}</p><p className="mt-1 text-xs leading-5 text-zinc-400">{log.body}</p><p className="mt-2 text-[11px] text-zinc-600">{log.time}</p></div>)}</div></section></div></aside>; }
 
 export default function AICompanyApp() {
-  const [state, setState] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      const parsed = JSON.parse(saved);
-      return parsed?.version === APP_VERSION ? { ...initialState, ...parsed } : initialState;
-    } catch {
-      return initialState;
-    }
-  });
-  const [draft, setDraft] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const autoTimer = useRef(null);
-  const activeAgent = getAgent(state.activeAgentId);
-  const currentMessages = useMemo(() => state.messages.filter((message) => (message.agentId === state.activeAgentId || message.agentId === "ceo") && (!searchQuery.trim() || `${message.body} ${message.tasks.join(" ")}`.toLowerCase().includes(searchQuery.toLowerCase()))), [state.activeAgentId, state.messages, searchQuery]);
+  const [state, setState] = useState(() => { try { const saved = localStorage.getItem(STORAGE_KEY); return saved ? { ...initialState, ...JSON.parse(saved), version: APP_VERSION } : initialState; } catch { return initialState; } });
+  const [draft, setDraft] = useState(""); const [searchQuery, setSearchQuery] = useState(""); const [projectDraft, setProjectDraft] = useState(""); const timer = useRef(null);
+  const currentMessages = useMemo(() => state.messages.filter((m) => !searchQuery.trim() || `${m.body} ${(m.tasks || []).join(" ")} ${(m.files || []).map((f) => f.name).join(" ")}`.toLowerCase().includes(searchQuery.toLowerCase())), [state.messages, searchQuery]);
+  function persist(next) { const normalized = { ...next, version: APP_VERSION }; setState(normalized); localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized)); }
+  function updateMission(value) { persist({ ...state, mission: value, projectName: activeProject(state)?.name || state.projectName }); clearTimeout(timer.current); if (value.trim().length > 8) timer.current = setTimeout(() => applyRun(value, "프로젝트 목표 자동 분석"), 900); }
+  function addProject() { const name = projectDraft.trim(); if (!name) return; const project = { id: `project-${Date.now()}`, name, mission: `${name} 프로젝트의 요구사항, 설계, 개발, QA, 배포 산출물을 관리한다.` }; persist({ ...state, projects: [...state.projects, project], activeProjectId: project.id, projectName: project.name, mission: project.mission, messages: [], generatedArtifacts: defaultArtifacts, activeBoard: "chat" }); setProjectDraft(""); }
+  function changeProject(id) { const project = state.projects.find((p) => p.id === id); if (project) persist({ ...state, activeProjectId: id, projectName: project.name, mission: project.mission, activeBoard: "chat" }); }
+  async function applyRun(rawCommand, reason = "명령 실행") { const command = rawCommand.trim(); if (!command) return; clearTimeout(timer.current); const loading = { ...state, processing: true, mission: command, projectName: activeProject(state)?.name || state.projectName }; const immediate = localRun(command, loading, reason); const immediateState = { ...loading, bootstrapped: true, activeBoard: "chat", messages: [...immediate.messages, ...state.messages].slice(0, 140), notifications: [...immediate.notifications, ...state.notifications].slice(0, 24), automationLog: [immediate.log, ...state.automationLog].slice(0, 24), generatedArtifacts: immediate.artifacts }; persist(immediateState); try { const data = await requestRun(command, loading); const run = materialize(data, command, loading, reason); persist({ ...immediateState, processing: false, messages: [...run.messages, ...state.messages].slice(0, 140), notifications: [...run.notifications, ...immediate.notifications, ...state.notifications].slice(0, 24), automationLog: [run.log, immediate.log, ...state.automationLog].slice(0, 24), generatedArtifacts: run.artifacts }); } catch (error) { persist({ ...immediateState, processing: false, notifications: [{ id: `warn-${Date.now()}`, title: "API 저장 확인 필요", body: error.message, tone: "warning", time: getTime() }, ...immediateState.notifications].slice(0, 24) }); } }
+  function sendMessage(event) { event.preventDefault(); const formValue = event.currentTarget.querySelector("textarea")?.value || ""; const command = (draft || formValue).trim(); if (!command || state.processing) return; setDraft(""); applyRun(command); }
+  function keyDown(event) { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }
+  function clearConversation() { if (window.confirm("대화창만 초기화할까요? 산출물, 프로젝트, 저장 기록은 유지됩니다.")) persist({ ...state, messages: [], notifications: [{ id: `clear-${Date.now()}`, title: "대화창 정리", body: "대화 메시지만 삭제했습니다. 산출물과 저장 기록은 유지됩니다.", tone: "info", time: getTime() }, ...state.notifications].slice(0, 24) }); }
+  useEffect(() => { requestStatus().then((apiStatus) => setState((cur) => { const next = { ...cur, apiStatus, version: APP_VERSION }; localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); return next; })).catch(() => {}); }, []);
+  useEffect(() => { let cancelled = false; requestLatest(state.projectName).then((latest) => { if (cancelled || !latest?.found || !latest.data) return; setState((cur) => { if (cur.hydrated || cur.processing || cur.messages.length) return cur; const run = materialize(latest.data, latest.run?.command || cur.mission, cur, "Supabase 최신 기록 복구"); const next = { ...cur, hydrated: true, bootstrapped: true, messages: run.messages.slice(0, 140), notifications: run.notifications.slice(0, 24), automationLog: [run.log], generatedArtifacts: run.artifacts }; localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); return next; }); }).catch(() => setState((cur) => ({ ...cur, hydrated: true }))); return () => { cancelled = true; }; }, []);
 
-  function persist(nextState) {
-    const normalized = { ...nextState, version: APP_VERSION };
-    setState(normalized);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-  }
-
-  function syncActiveProject(projects, activeProjectId) {
-    const project = projects.find((item) => item.id === activeProjectId) || projects[0];
-    return { projectName: project.name, mission: project.mission };
-  }
-
-  function updateActiveProject(field, value) {
-    const projects = state.projects.map((project) => project.id === state.activeProjectId ? { ...project, [field]: value } : project);
-    persist({ ...state, projects, [field === "name" ? "projectName" : "mission"]: value });
-    if (field === "mission") {
-      window.clearTimeout(autoTimer.current);
-      autoTimer.current = window.setTimeout(() => applyRun(value, "프로젝트 목표 변경"), 900);
-    }
-  }
-
-  function selectProject(projectId) {
-    persist({ ...state, activeProjectId: projectId, ...syncActiveProject(state.projects, projectId), activeBoard: "final" });
-  }
-
-  function addProject() {
-    const id = `project-${Date.now()}`;
-    const project = { id, name: `새 프로젝트 ${state.projects.length + 1}`, mission: "프로젝트 목표를 입력하세요." };
-    persist({ ...state, projects: [...state.projects, project], activeProjectId: id, projectName: project.name, mission: project.mission, messages: [], generatedArtifacts: null, activeBoard: "chat" });
-  }
-
-  async function applyRun(command, reason = "명령 실행") {
-    const ceoCommand = { id: `ceo-command-${Date.now()}`, agentId: "ceo", body: command, tasks: ["명령 접수", "AI API 실행", "산출물 저장"], time: getTime() };
-    const loadingState = { ...state, mission: command, processing: true, notifications: [{ id: `n-loading-${Date.now()}`, title: "AI 실행 중", body: "산출물을 생성하고 저장하고 있습니다.", tone: "info", time: getTime() }, ...state.notifications].slice(0, 8) };
-    persist(loadingState);
-    try {
-      const apiRun = await requestCompanyRun(command, loadingState);
-      const run = materializeRun(apiRun, command, loadingState, reason);
-      persist({ ...loadingState, activeBoard: "final", activeAgentId: run.selectedIds.at(-1) || loadingState.activeAgentId, bootstrapped: true, processing: false, messages: [...run.messages, ceoCommand, ...loadingState.messages].slice(0, 80), notifications: [...run.notifications, ...loadingState.notifications].slice(0, 12), automationLog: [run.log, ...loadingState.automationLog].slice(0, 12), generatedArtifacts: run.artifacts });
-    } catch (error) {
-      const run = buildLocalRun(command, loadingState, `${reason} · 로컬 처리`);
-      persist({ ...loadingState, activeBoard: "final", activeAgentId: run.selectedIds.at(-1) || loadingState.activeAgentId, bootstrapped: true, processing: false, messages: [...run.messages, ceoCommand, ...loadingState.messages].slice(0, 80), notifications: [{ id: `n-fallback-${Date.now()}`, title: "API 실행 확인 필요", body: `${error.message} 로컬 산출물로 임시 처리했습니다.`, tone: "warning", time: getTime() }, ...run.notifications, ...loadingState.notifications].slice(0, 12), automationLog: [run.log, ...loadingState.automationLog].slice(0, 12), generatedArtifacts: run.artifacts });
-    }
-  }
-
-  function sendMessage(event) {
-    event.preventDefault();
-    const command = draft.trim();
-    if (!command) return;
-    applyRun(command);
-    setDraft("");
-  }
-
-  function handleDraftKeyDown(event) {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      event.currentTarget.form?.requestSubmit();
-    }
-  }
-
-  function runAgent(agentId = state.activeAgentId) {
-    const agent = getAgent(agentId);
-    persist({ ...state, activeAgentId: agentId, activeBoard: "chat", notifications: [{ id: `n-agent-${Date.now()}`, title: `${agent.name} 확인`, body: `${agent.specialty} 기준으로 현재 산출물을 검토합니다.`, time: getTime(), tone: "info" }, ...state.notifications].slice(0, 12) });
-  }
-
-  function clearConversation() {
-    if (!window.confirm("대화창만 삭제할까요? 요구서, 산출물, 알림, Supabase 기록은 유지됩니다.")) return;
-    persist({ ...state, messages: [], notifications: [{ id: `n-clear-${Date.now()}`, title: "대화창 정리", body: "대화 메시지만 삭제했습니다. 산출물과 저장 기록은 유지됩니다.", time: getTime(), tone: "info" }, ...state.notifications].slice(0, 12) });
-  }
-
-  useEffect(() => {
-    requestIntegrationStatus()
-      .then((apiStatus) => {
-        setState((current) => {
-          const nextState = { ...current, apiStatus, version: APP_VERSION };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
-          return nextState;
-        });
-      })
-      .catch(() => {});
-  }, [state.hydrated]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (state.hydrated) return undefined;
-    requestLatestCompanyRun().then((latest) => {
-      if (cancelled) return;
-      if (latest?.found && latest.data) {
-        const run = materializeRun(latest.data, latest.run?.command || state.mission, state, "Supabase 최신 실행 복구");
-        persist({ ...state, projectName: isUsableText(latest.run?.project_name) ? latest.run.project_name : state.projectName, mission: isUsableText(latest.run?.mission || latest.run?.command) ? (latest.run.mission || latest.run.command) : state.mission, activeBoard: "final", activeAgentId: run.selectedIds.at(-1) || state.activeAgentId, bootstrapped: true, hydrated: true, processing: false, messages: run.messages.slice(0, 80), notifications: run.notifications.slice(0, 12), automationLog: [run.log].slice(0, 12), generatedArtifacts: run.artifacts });
-      } else {
-        persist({ ...state, hydrated: true });
-      }
-    }).catch(() => !cancelled && persist({ ...state, hydrated: true }));
-    return () => { cancelled = true; };
-  }, [state.hydrated]);
-
-  useEffect(() => {
-    if (state.hydrated && !state.bootstrapped) {
-      const timer = window.setTimeout(() => applyRun(state.mission, "초기 실행"), 300);
-      return () => window.clearTimeout(timer);
-    }
-    return undefined;
-  }, [state.hydrated, state.bootstrapped]);
-
-  return (
-    <div className="flex h-screen overflow-hidden bg-black text-zinc-100">
-      <aside className="hidden w-72 shrink-0 border-r border-zinc-800 bg-zinc-950 md:flex md:flex-col">
-        <div className="border-b border-zinc-800 p-4">
-          <p className="text-xs font-semibold uppercase text-yellow-300">Project Operations</p>
-          <select value={state.activeProjectId} onChange={(event) => selectProject(event.target.value)} className="mt-2 h-10 w-full rounded-md border border-zinc-700 bg-black px-3 text-sm text-white outline-none">
-            {state.projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-          </select>
-          <button type="button" onClick={addProject} className="mt-2 h-9 w-full rounded-md border border-zinc-700 text-sm text-zinc-300 hover:bg-zinc-900">프로젝트 추가</button>
-          <div className="mt-3 flex h-9 items-center gap-2 rounded-md bg-zinc-900 px-3 text-sm text-zinc-300"><Search size={15} /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="산출물 검색" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-zinc-500" /></div>
-        </div>
-        <div className="app-scrollbar flex-1 overflow-y-auto p-3">
-          <p className="mb-2 px-2 text-xs font-semibold uppercase text-zinc-500">직무 채널</p>
-          <div className="space-y-1">{agents.map((agent) => <button key={agent.id} type="button" onClick={() => persist({ ...state, activeAgentId: agent.id, activeBoard: "chat" })} className={classNames("flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm", state.activeAgentId === agent.id ? "bg-zinc-700 text-white" : "text-zinc-300 hover:bg-zinc-800 hover:text-white")}><Hash size={15} /><span className="truncate">{agent.channel.replace("#", "")}</span></button>)}</div>
-          <p className="mb-2 mt-6 px-2 text-xs font-semibold uppercase text-zinc-500">AI 직원</p>
-          <div className="space-y-2">{agents.map((agent) => <button key={agent.id} type="button" onClick={() => persist({ ...state, activeAgentId: agent.id, activeBoard: "chat" })} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-zinc-900"><AgentAvatar agent={agent} /><div className="min-w-0"><p className="truncate text-sm text-zinc-200">{agent.name}</p><p className="truncate text-xs text-zinc-500">{agent.title}</p></div></button>)}</div>
-        </div>
-        <div className="border-t border-zinc-800 p-3"><button type="button" onClick={clearConversation} className="h-9 w-full rounded-md border border-zinc-700 text-sm text-zinc-300 hover:bg-zinc-900">대화창 정리</button></div>
-      </aside>
-
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="border-b border-zinc-800 bg-black px-5 py-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><p className="text-sm font-semibold text-yellow-300">실행 기록 · 산출물 · 알림 · 최종본 관리</p><h2 className="mt-2 text-3xl font-black text-white sm:text-4xl">프로젝트 운영 본부</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400">AI 실행 결과를 Supabase에 저장하고, 프로젝트별 산출물을 검토합니다.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => applyRun(state.mission, "전체 산출물 갱신")} className="inline-flex h-10 items-center gap-2 rounded-md bg-yellow-300 px-4 text-sm font-bold text-black hover:bg-yellow-200"><Brain size={16} />전체 산출물 갱신</button><button type="button" onClick={() => runAgent()} className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 px-4 text-sm font-semibold text-white hover:bg-zinc-900"><Bot size={16} />선택 AI 확인</button></div></div>
-        </header>
-
-        <section className="grid border-b border-zinc-800 bg-zinc-950 lg:grid-cols-[minmax(0,1fr)_360px]"><div className="p-4"><label className="text-xs font-semibold uppercase text-zinc-500">프로젝트 목표</label><textarea value={state.mission} onChange={(event) => updateActiveProject("mission", event.target.value)} className="mt-2 min-h-20 w-full rounded-lg border border-zinc-700 bg-black px-3 py-3 text-sm leading-6 text-zinc-100 outline-none focus:border-yellow-300" /></div><div className="border-t border-zinc-800 p-4 lg:border-l lg:border-t-0"><label className="text-xs font-semibold uppercase text-zinc-500">프로젝트 이름</label><input value={state.projectName} onChange={(event) => updateActiveProject("name", event.target.value)} className="mt-2 h-10 w-full rounded-lg border border-zinc-700 bg-black px-3 text-sm text-zinc-100 outline-none focus:border-yellow-300" /><div className="mt-3 flex items-center gap-2 text-sm text-zinc-400"><Users size={16} />프로젝트 {state.projects.length}개 · 알림 {state.notifications.length}개</div></div></section>
-
-        <nav className="flex gap-1 overflow-x-auto border-b border-zinc-800 bg-zinc-950 px-4 py-2">{boards.map((board) => { const Icon = board.icon; return <button key={board.id} type="button" onClick={() => persist({ ...state, activeBoard: board.id })} className={classNames("inline-flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium", state.activeBoard === board.id ? "bg-yellow-300 text-black" : "text-zinc-300 hover:bg-zinc-800 hover:text-white")}><Icon size={15} />{board.label}</button>; })}</nav>
-
-        <section className="flex min-h-0 flex-1"><div className="flex min-h-0 min-w-0 flex-1 flex-col">{state.activeBoard === "chat" ? <><div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3"><div className="flex items-center gap-3"><Hash size={19} className="text-zinc-500" /><div><p className="font-semibold text-white">{activeAgent.channel}</p><p className="text-xs text-zinc-500">{activeAgent.name} · {activeAgent.specialty}</p></div></div><div className="hidden items-center gap-2 text-sm text-zinc-500 sm:flex"><MessageSquare size={16} />응답 {currentMessages.length}개</div></div><div className="app-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain bg-zinc-950 py-2">{currentMessages.map((message) => <Message key={message.id} message={message} />)}</div><form onSubmit={sendMessage} className="border-t border-zinc-800 bg-black p-4"><div className="flex items-end gap-3 rounded-xl border border-zinc-700 bg-zinc-950 p-3 focus-within:border-yellow-300"><Brain size={20} className="mt-2 shrink-0 text-yellow-300" /><textarea value={draft} onKeyDown={handleDraftKeyDown} onChange={(event) => setDraft(event.target.value)} placeholder="명령 입력 후 Enter, 줄바꿈은 Shift+Enter" className="min-h-11 flex-1 resize-none bg-transparent text-sm leading-6 text-white outline-none placeholder:text-zinc-500" /><button type="submit" disabled={state.processing} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-300 text-black hover:bg-yellow-200 disabled:opacity-50" aria-label="보내기"><Send size={17} /></button></div></form></> : <ArtifactBoard boardId={state.activeBoard} state={state} searchQuery={searchQuery} />}</div><RightPanel state={state} /></section>
-      </main>
-    </div>
-  );
+  return <main className="flex min-h-screen bg-black text-zinc-100"><aside className="hidden w-72 shrink-0 border-r border-zinc-800 bg-zinc-950 lg:flex lg:flex-col"><div className="border-b border-zinc-800 p-5"><p className="text-xs font-bold uppercase tracking-[0.18em] text-yellow-300">AI Company OS</p><h1 className="mt-2 text-xl font-black text-white">프로젝트 운영 본부</h1><p className="mt-2 text-sm leading-6 text-zinc-500">AI 직원들이 기획, 설계, 개발, QA, 운영을 나눠 처리합니다.</p></div><div className="app-scrollbar min-h-0 flex-1 overflow-y-auto p-3"><p className="mb-2 px-2 text-xs font-bold uppercase text-zinc-600">산출물</p>{boards.map((b) => { const Icon = b.icon; return <button key={b.id} type="button" onClick={() => persist({ ...state, activeBoard: b.id })} className={classNames("flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold", state.activeBoard === b.id ? "bg-yellow-300 text-black" : "text-zinc-400 hover:bg-zinc-900 hover:text-white")}><Icon size={17} />{b.label}</button>; })}<p className="mb-2 mt-5 px-2 text-xs font-bold uppercase text-zinc-600">AI 직원</p>{agents.map((a) => <div key={a.id} className="rounded-md px-3 py-2 text-sm text-zinc-400"><p className="font-semibold text-zinc-200">{a.name}</p><p className="text-xs text-zinc-600">{a.title}</p></div>)}</div></aside><section className="flex min-h-screen min-w-0 flex-1 flex-col"><header className="border-b border-zinc-800 bg-black p-5"><div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between"><div><p className="text-sm font-semibold text-yellow-300">실행 기록 · 직원 대화 · 산출물 · 최종본</p><h2 className="mt-2 text-3xl font-black text-white sm:text-4xl">AI 직원들이 실제 팀처럼 협업합니다</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400">명령을 내리면 JIWON 요청이 기록되고, 직원들이 서로 검토하면서 요구사항, UML, ERD, API/DB, QA 보고서를 파일처럼 올립니다.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => applyRun(state.mission, "전체 산출물 갱신")} className="inline-flex h-10 items-center gap-2 rounded-md bg-yellow-300 px-4 text-sm font-bold text-black hover:bg-yellow-200"><Brain size={16} />전체 실행</button><button type="button" onClick={clearConversation} className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 px-4 text-sm font-semibold text-white hover:bg-zinc-900"><MessageSquare size={16} />대화창 초기화</button></div></div><div className="mt-5 grid gap-3 xl:grid-cols-[280px_minmax(0,1fr)_260px]"><select value={state.activeProjectId} onChange={(e) => changeProject(e.target.value)} className="h-11 rounded-md border border-zinc-700 bg-zinc-950 px-3 text-sm text-white outline-none focus:border-yellow-300">{state.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><div className="flex min-w-0 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-950 px-3"><Search size={17} className="text-zinc-500" /><input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="대화와 산출물 검색" className="h-10 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-600" /></div><div className="flex gap-2"><input value={projectDraft} onChange={(e) => setProjectDraft(e.target.value)} placeholder="새 프로젝트명" className="h-11 min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-950 px-3 text-sm text-white outline-none focus:border-yellow-300" /><button type="button" onClick={addProject} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-zinc-700 text-white hover:bg-zinc-900" aria-label="프로젝트 추가"><Plus size={18} /></button></div></div><textarea value={state.mission} onChange={(e) => updateMission(e.target.value)} className="mt-3 min-h-20 w-full resize-y rounded-md border border-zinc-800 bg-zinc-950 p-3 text-sm leading-6 text-zinc-200 outline-none focus:border-yellow-300" /></header><section className="flex min-h-0 flex-1"><div className="flex min-h-0 min-w-0 flex-1 flex-col">{state.activeBoard === "chat" ? <><div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3"><div className="flex items-center gap-3"><Hash size={19} className="text-zinc-500" /><div><p className="font-semibold text-white">#업무-대화</p><p className="text-xs text-zinc-500">JIWON 요청과 AI 직원 협업 로그</p></div></div><div className="hidden items-center gap-2 text-sm text-zinc-500 sm:flex"><MessageSquare size={16} />메시지 {currentMessages.length}개</div></div><div className="app-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain bg-zinc-950 py-2">{currentMessages.map((m) => <Message key={m.id} message={m} />)}</div><form onSubmit={sendMessage} className="border-t border-zinc-800 bg-black p-4"><div className="flex items-end gap-3 rounded-xl border border-zinc-700 bg-zinc-950 p-3 focus-within:border-yellow-300"><Bot size={20} className="mt-2 shrink-0 text-yellow-300" /><textarea value={draft} onKeyDown={keyDown} onChange={(e) => setDraft(e.target.value)} onInput={(e) => setDraft(e.currentTarget.value)} placeholder="예: 동의대학교 학사 시스템 프로젝트 진행해봐" className="min-h-11 flex-1 resize-none bg-transparent text-sm leading-6 text-white outline-none placeholder:text-zinc-500" /><button type="submit" disabled={state.processing} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-300 text-black hover:bg-yellow-200 disabled:opacity-50" aria-label="보내기"><Send size={17} /></button></div><p className="mt-2 text-xs text-zinc-600">Enter 전송, Shift+Enter 줄바꿈</p></form></> : <ArtifactBoard boardId={state.activeBoard} state={state} searchQuery={searchQuery} />}</div><RightPanel state={state} /></section></section></main>;
 }
