@@ -29,7 +29,7 @@ const STORAGE_KEY = "ai-company-chat.v2";
 const agents = [
   {
     id: "ceo",
-    name: "박선혜",
+    name: "대표총괄AI",
     role: "CEO",
     title: "대표 비서",
     icon: Megaphone,
@@ -39,7 +39,7 @@ const agents = [
   },
   {
     id: "cso",
-    name: "김민지",
+    name: "전략기획AI",
     role: "CSO",
     title: "전략 기획",
     icon: Target,
@@ -49,7 +49,7 @@ const agents = [
   },
   {
     id: "cpo",
-    name: "유수민",
+    name: "제품기획AI",
     role: "CPO",
     title: "제품 책임자",
     icon: FileText,
@@ -59,7 +59,7 @@ const agents = [
   },
   {
     id: "cdo",
-    name: "전병석",
+    name: "UX설계AI",
     role: "CDO",
     title: "디자인 책임자",
     icon: PenTool,
@@ -69,7 +69,7 @@ const agents = [
   },
   {
     id: "cto",
-    name: "장준구",
+    name: "기술설계AI",
     role: "CTO",
     title: "기술 책임자",
     icon: Layers3,
@@ -79,7 +79,7 @@ const agents = [
   },
   {
     id: "engineer",
-    name: "정다영",
+    name: "개발구현AI",
     role: "개발자",
     title: "풀스택 엔지니어",
     icon: Code2,
@@ -89,7 +89,7 @@ const agents = [
   },
   {
     id: "qa",
-    name: "박서현",
+    name: "품질검증AI",
     role: "QA",
     title: "품질 책임자",
     icon: TestTube2,
@@ -99,7 +99,7 @@ const agents = [
   },
   {
     id: "devops",
-    name: "김선호",
+    name: "배포운영AI",
     role: "DevOps",
     title: "운영 책임자",
     icon: Rocket,
