@@ -1,4 +1,4 @@
-﻿import {
+import {
   AlertTriangle,
   Bell,
   Bot,
@@ -28,8 +28,8 @@
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-const STORAGE_KEY = "ai-company-ops.v4";
-const APP_VERSION = "2026.05.06-practical-api";
+const STORAGE_KEY = "ai-company-ops.v6";
+const APP_VERSION = "2026.05.06-auto-workflow-v2";
 
 const agents = [
   { id: "ceo", name: "대표총괄AI", role: "CEO", title: "의사결정/우선순위", icon: Megaphone, color: "bg-orange-500", channel: "#대표-브리핑", specialty: "목표, 범위, 승인 기준" },
@@ -117,6 +117,9 @@ const initialState = {
     { id: "m-2", agentId: "pm", body: "PM 관점에서는 요구사항을 단순 메모로 두면 안 됩니다. 문제 정의, 사용자, 수용 기준, 성공 지표, 변경 영향까지 한 화면에서 점검해야 합니다.", tasks: ["PRD 초안 작성", "수용 기준 검증", "요구사항 변경 영향 관리"], time: "오전 9:14" },
   ],
   done: ["홍보형 문구 제거", "실무 산출물 구조 설계"],
+  automationLog: [
+    { id: "log-1", title: "초기 운영 본부 구성", body: "PRD, WBS, UML, API, QA, 리스크, 릴리즈 산출물 보드를 준비했습니다.", time: "오전 9:20" },
+  ],
 };
 
 function getTime() {
@@ -146,6 +149,51 @@ function buildAgentReply(agent, state) {
   return { body: `${state.projectName}: ${body}`, tasks };
 }
 
+
+function selectAgentsForCommand(command) {
+  const text = command.toLowerCase();
+  if (text.includes("부족") || text.includes("개선") || text.includes("현업") || text.includes("실무")) {
+    return ["ceo", "pm", "ux", "arch", "dev", "qa"];
+  }
+  if (text.includes("api") || text.includes("연동") || text.includes("깃허브") || text.includes("github")) {
+    return ["ceo", "arch", "dev", "ops", "qa"];
+  }
+  if (text.includes("uml") || text.includes("설계") || text.includes("erd")) {
+    return ["ceo", "ux", "arch", "pm"];
+  }
+  if (text.includes("테스트") || text.includes("qa") || text.includes("릴리즈")) {
+    return ["ceo", "qa", "dev", "ops"];
+  }
+  return ["ceo", "strategy", "pm", "ux", "arch", "dev", "qa", "ops"];
+}
+
+function buildCollaborativeRun(command, state) {
+  const selectedIds = selectAgentsForCommand(command);
+  const timestamp = Date.now();
+  const messages = selectedIds.map((agentId, index) => {
+    const agent = getAgent(agentId);
+    const reply = buildAgentReply(agent, { ...state, mission: command });
+    const prefix = index === 0
+      ? "대표 요청을 접수했습니다. 관련 부서에 자동 배정합니다."
+      : `${getAgent(selectedIds[index - 1]).name} 결과를 이어받아 제 담당 산출물로 구체화합니다.`;
+    return {
+      id: `${agentId}-${timestamp}-${index}`,
+      agentId,
+      body: `${prefix} ${reply.body}`,
+      tasks: reply.tasks,
+      time: getTime(),
+    };
+  });
+
+  const log = {
+    id: `auto-${timestamp}`,
+    title: "대표 명령 자동 분배",
+    body: `${selectedIds.map((id) => getAgent(id).name).join(" → ")} 순서로 업무를 배정했습니다.`,
+    time: getTime(),
+  };
+
+  return { messages, log, selectedIds };
+}
 function AgentAvatar({ agent, size = "md" }) {
   const Icon = agent.icon;
   const sizeClass = size === "lg" ? "h-11 w-11" : "h-8 w-8";
@@ -234,7 +282,7 @@ function RightPanel({ state }) {
         <div className="mt-3 flex items-center gap-3"><AgentAvatar agent={activeAgent} size="lg" /><div><p className="font-semibold text-white">{activeAgent.name}</p><p className="text-sm text-zinc-400">{activeAgent.specialty}</p></div></div>
       </div>
       <div className="space-y-4 p-4">
-        <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-4"><p className="flex items-center gap-2 text-sm font-semibold text-white"><ListChecks size={16} className="text-emerald-400" />운영 체크</p><div className="mt-3 space-y-2">{state.done.map((item) => <div key={item} className="flex gap-2 text-sm text-zinc-300"><CheckCircle2 size={15} className="mt-0.5 text-emerald-400" />{item}</div>)}</div></section>
+        <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-4"><p className="flex items-center gap-2 text-sm font-semibold text-white"><ListChecks size={16} className="text-emerald-400" />자동화 실행 로그</p><div className="mt-3 space-y-3">{(state.automationLog || []).map((item) => <div key={item.id} className="rounded-md border border-zinc-800 bg-black p-3"><p className="text-sm font-semibold text-zinc-100">{item.title}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{item.body}</p><p className="mt-2 text-xs text-zinc-600">{item.time}</p></div>)}</div></section>
         <IntegrationChecklist />
         <section className="rounded-lg border border-yellow-400/40 bg-yellow-400/10 p-4"><p className="text-sm font-semibold text-yellow-200">실무 기준</p><p className="mt-2 text-sm leading-6 text-yellow-50/90">대화는 과정이고, PRD/WBS/UML/API/QA/리스크/릴리즈와 API 연동 상태가 실제 결과물입니다.</p></section>
       </div>
@@ -278,12 +326,32 @@ export default function AICompanyApp() {
       done: ["전체 AI 산출물 검토", "PRD/WBS/UML/API/QA 연결", ...state.done].slice(0, 5),
     });
   }
+  function executeCommand(command) {
+    const body = command.trim();
+    if (!body) return;
+    const run = buildCollaborativeRun(body, state);
+    const ceoMessage = {
+      id: `ceo-command-${Date.now()}`,
+      agentId: "ceo",
+      body,
+      tasks: ["대표 명령 접수", "관련 AI 자동 배정", "산출물 갱신 대기"],
+      time: getTime(),
+    };
+    persist({
+      ...state,
+      mission: body,
+      activeBoard: "chat",
+      activeAgentId: run.selectedIds[run.selectedIds.length - 1] || state.activeAgentId,
+      version: APP_VERSION,
+      messages: [...run.messages, ceoMessage, ...state.messages],
+      done: ["대표 명령 자동 분배", "부서별 산출물 갱신", ...state.done].slice(0, 5),
+      automationLog: [run.log, ...(state.automationLog || [])].slice(0, 6),
+    });
+  }
+
   function sendMessage(event) {
     event.preventDefault();
-    const body = draft.trim();
-    if (!body) return;
-    const reply = buildAgentReply(activeAgent, { ...state, mission: body });
-    persist({ ...state, mission: body, activeBoard: "chat", messages: [{ id: `${activeAgent.id}-${Date.now()}`, agentId: activeAgent.id, body: reply.body, tasks: reply.tasks, time: getTime() }, { id: `ceo-${Date.now()}`, agentId: "ceo", body, tasks: ["대표 요청 접수", "담당 AI 검토", "산출물 업데이트"], time: getTime() }, ...state.messages] });
+    executeCommand(draft);
     setDraft("");
   }
   function reset() { localStorage.removeItem(STORAGE_KEY); setState(initialState); setDraft(""); }
@@ -297,7 +365,7 @@ export default function AICompanyApp() {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="border-b border-zinc-800 bg-black px-5 py-4"><div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><p className="text-sm font-semibold text-yellow-300">CEO가 지시하고, AI 부서가 산출물을 만드는 실무형 PM 시스템</p><h2 className="mt-2 text-3xl font-black text-white sm:text-4xl">AI 프로젝트 운영 본부</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400">단순 대화방이 아니라 요구사항, WBS, UML, API, QA, 리스크, 릴리즈를 한 프로젝트 흐름으로 연결합니다.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={runAllAgents} className="inline-flex h-10 items-center gap-2 rounded-md bg-yellow-300 px-4 text-sm font-bold text-black hover:bg-yellow-200"><Play size={16} /> 전체 AI 검토</button><button type="button" onClick={() => runAgent()} className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 px-4 text-sm font-semibold text-white hover:bg-zinc-900"><Bot size={16} /> 현재 AI 실행</button></div></div></header>
+        <header className="border-b border-zinc-800 bg-black px-5 py-4"><div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><p className="text-sm font-semibold text-yellow-300">CEO가 지시하고, AI 부서가 산출물을 만드는 실무형 PM 시스템</p><h2 className="mt-2 text-3xl font-black text-white sm:text-4xl">AI 프로젝트 운영 본부</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400">단순 대화방이 아니라 요구사항, WBS, UML, API, QA, 리스크, 릴리즈를 한 프로젝트 흐름으로 연결합니다.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => executeCommand("현재 서비스가 현업 PM 도구로 부족한 점을 찾고, 각 AI 직원에게 개선 업무를 자동 배정해줘")} className="inline-flex h-10 items-center gap-2 rounded-md bg-yellow-300 px-4 text-sm font-bold text-black hover:bg-yellow-200"><Play size={16} /> 자동화 테스트</button><button type="button" onClick={() => runAgent()} className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 px-4 text-sm font-semibold text-white hover:bg-zinc-900"><Bot size={16} /> 현재 AI 실행</button></div></div></header>
         <section className="grid border-b border-zinc-800 bg-zinc-950 lg:grid-cols-[minmax(0,1fr)_360px]"><div className="p-4"><label className="text-xs font-semibold uppercase text-zinc-500">프로젝트 미션</label><textarea value={state.mission} onChange={(event) => updateField("mission", event.target.value)} className="mt-2 min-h-20 w-full rounded-lg border border-zinc-700 bg-black px-3 py-3 text-sm leading-6 text-zinc-100 outline-none focus:border-yellow-300" /></div><div className="border-t border-zinc-800 p-4 lg:border-l lg:border-t-0"><label className="text-xs font-semibold uppercase text-zinc-500">프로젝트 이름</label><input value={state.projectName} onChange={(event) => updateField("projectName", event.target.value)} className="mt-2 h-10 w-full rounded-lg border border-zinc-700 bg-black px-3 text-sm text-zinc-100 outline-none focus:border-yellow-300" /><div className="mt-3 flex items-center gap-2 text-sm text-zinc-400"><Users size={16} /> AI 직원 {agents.length}명 · 산출물 {boards.length - 2}종 · API 연동 4종</div></div></section>
         <nav className="flex gap-1 overflow-x-auto border-b border-zinc-800 bg-zinc-950 px-4 py-2">{boards.map((board) => { const Icon = board.icon; return <button key={board.id} type="button" onClick={() => updateField("activeBoard", board.id)} className={classNames("inline-flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium", state.activeBoard === board.id ? "bg-yellow-300 text-black" : "text-zinc-300 hover:bg-zinc-800 hover:text-white")}><Icon size={15} />{board.label}</button>; })}</nav>
         <section className="flex min-h-0 flex-1"><div className="flex min-w-0 flex-1 flex-col">{state.activeBoard === "chat" ? <><div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3"><div className="flex items-center gap-3"><Hash size={19} className="text-zinc-500" /><div><p className="font-semibold text-white">{activeAgent.channel}</p><p className="text-xs text-zinc-500">{activeAgent.name} · {activeAgent.specialty}</p></div></div><div className="hidden items-center gap-2 text-sm text-zinc-500 sm:flex"><MessageSquare size={16} /> 응답 {currentMessages.length}개</div></div><div className="flex-1 overflow-y-auto bg-zinc-950 py-2">{currentMessages.map((message) => <Message key={message.id} message={message} />)}</div><form onSubmit={sendMessage} className="border-t border-zinc-800 bg-black p-4"><div className="flex items-end gap-3 rounded-xl border border-zinc-700 bg-zinc-950 p-3 focus-within:border-yellow-300"><Brain size={20} className="mt-2 shrink-0 text-yellow-300" /><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={`${activeAgent.name}에게 실무 지시하기...`} className="min-h-11 flex-1 resize-none bg-transparent text-sm leading-6 text-white outline-none placeholder:text-zinc-500" /><button type="submit" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-300 text-black hover:bg-yellow-200" aria-label="보내기"><Send size={17} /></button></div></form></> : <ArtifactBoard boardId={state.activeBoard} />}</div><RightPanel state={state} /></section>

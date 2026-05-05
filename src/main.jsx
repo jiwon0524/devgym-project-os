@@ -1,7 +1,27 @@
-﻿import React from "react";
+import React from "react";
 import { createRoot } from "react-dom/client";
 import AICompanyApp from "./AICompanyApp.jsx";
 import "./index.css";
+const CLIENT_VERSION = "2026.05.06-auto-workflow-v2";
+const versionKey = "devgym-client-version";
+const previousVersion = localStorage.getItem(versionKey);
+
+if (previousVersion !== CLIENT_VERSION) {
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith("ai-company-") || key.startsWith("projectos."))
+    .forEach((key) => localStorage.removeItem(key));
+  localStorage.setItem(versionKey, CLIENT_VERSION);
+}
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations?.().then((registrations) => {
+    registrations.forEach((registration) => registration.unregister());
+  });
+}
+
+if ("caches" in window) {
+  caches.keys?.().then((keys) => keys.forEach((key) => caches.delete(key)));
+}
 
 class AppErrorBoundary extends React.Component {
   constructor(props) {
