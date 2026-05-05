@@ -108,14 +108,15 @@ export async function saveCompanyRun({ command, projectName, mission, result }) 
   };
 }
 
-export async function fetchLatestCompanyRun() {
-  const runResult = await supabaseRequest("agent_runs", {
-    query: {
-      select: "*",
-      order: "created_at.desc",
-      limit: "1",
-    },
-  });
+export async function fetchLatestCompanyRun(projectName) {
+  const query = {
+    select: "*",
+    order: "created_at.desc",
+    limit: "1",
+  };
+  if (projectName) query.project_name = `eq.${projectName}`;
+
+  const runResult = await supabaseRequest("agent_runs", { query });
 
   if (!runResult.ok) return { found: false, error: runResult.error };
   const run = Array.isArray(runResult.data) ? runResult.data[0] : null;
