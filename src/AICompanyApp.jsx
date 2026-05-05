@@ -1,4 +1,4 @@
-import {
+﻿import {
   Activity,
   ArrowRight,
   Bot,
@@ -112,6 +112,23 @@ const initialCompany = {
 };
 
 const stageOptions = ["Discovery", "Planning", "Design", "Build", "QA", "Launch"];
+const assistantIds = new Set(assistants.map((assistant) => assistant.id));
+
+function normalizeCompany(value) {
+  const next = { ...initialCompany, ...(value && typeof value === "object" ? value : {}) };
+  next.briefHistory = Array.isArray(next.briefHistory) ? next.briefHistory : [];
+  next.assignments = Array.isArray(next.assignments)
+    ? next.assignments.filter((assignment) => assistantIds.has(assignment?.assistantId))
+    : [];
+  next.selectedAssistantId = assistantIds.has(next.selectedAssistantId) ? next.selectedAssistantId : "pm";
+  next.stage = stageOptions.includes(next.stage) ? next.stage : "Discovery";
+  next.companyName = typeof next.companyName === "string" ? next.companyName : initialCompany.companyName;
+  next.projectName = typeof next.projectName === "string" ? next.projectName : initialCompany.projectName;
+  next.mission = typeof next.mission === "string" ? next.mission : initialCompany.mission;
+  next.audience = typeof next.audience === "string" ? next.audience : initialCompany.audience;
+  next.constraints = typeof next.constraints === "string" ? next.constraints : initialCompany.constraints;
+  return next;
+}
 
 function createAssignments(company) {
   const now = new Date().toISOString();
@@ -318,7 +335,7 @@ export default function AICompanyApp() {
   const [company, setCompany] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? { ...initialCompany, ...JSON.parse(saved) } : initialCompany;
+      return saved ? normalizeCompany(JSON.parse(saved)) : initialCompany;
     } catch {
       return initialCompany;
     }
