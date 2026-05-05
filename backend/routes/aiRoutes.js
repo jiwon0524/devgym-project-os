@@ -77,8 +77,10 @@ async function handleCompanyRun(request, response) {
   }
 }
 
-async function handleLatestCompanyRun(response) {
-  const latest = await fetchLatestCompanyRun();
+async function handleLatestCompanyRun(request, response) {
+  const url = new URL(request.url, `http://${request.headers.host}`);
+  const projectName = url.searchParams.get("projectName") || undefined;
+  const latest = await fetchLatestCompanyRun(projectName);
   sendJson(response, 200, { success: true, data: latest });
 }
 
@@ -104,7 +106,7 @@ export async function handleAiRoutes(request, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/ai/company-runs/latest") {
-    await handleLatestCompanyRun(response);
+    await handleLatestCompanyRun(request, response);
     return true;
   }
 
