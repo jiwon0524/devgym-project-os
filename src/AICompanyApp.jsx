@@ -27,8 +27,9 @@
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const STORAGE_KEY = "ai-company-ops.v7";
-const APP_VERSION = "2026.05.06-autonomous-company";
+const STORAGE_KEY = "ai-company-ops.v8";
+const APP_VERSION = "2026.05.06-api-automation";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const agents = [
   { id: "ceo", name: "대표총괄AI", role: "CEO", title: "목표/우선순위/승인", icon: Megaphone, color: "bg-orange-500", channel: "#대표-브리핑", specialty: "대표 요청을 해석하고 부서별 업무를 자동 배정" },
@@ -155,6 +156,8 @@ const initialState = {
     { id: "n-0", title: "자동 운영 대기", body: "프로젝트 목표를 입력하면 AI 직원들이 자동으로 산출물을 생성합니다.", time: getTime(), tone: "info" },
   ],
   automationLog: [],
+  generatedArtifacts: null,
+  processing: false,
   done: ["실무형 산출물 보드 준비", "AI 직원 역할 정의"],
 };
 
@@ -210,6 +213,49 @@ function buildCollaborativeRun(command, state, reason = "대표 명령") {
   return { selectedIds, messages, log, notifications };
 }
 
+async function requestCompanyRun(command, state) {
+  const response = await fetch(`${API_BASE_URL}/api/ai/company-run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      command,
+      projectName: state.projectName,
+      mission: state.mission,
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error || "AI 자동화 API 요청에 실패했습니다.");
+  }
+  return payload.data;
+}
+
+function materializeRun(apiRun, command, state, reason) {
+  const timestamp = Date.now();
+  const selectedIds = apiRun.selectedAgents?.length ? apiRun.selectedAgents : selectAgentsForCommand(command);
+  const messages = (apiRun.messages || []).map((message, index) => ({
+    id: `${message.agentId || selectedIds[index] || "ceo"}-${timestamp}-${index}`,
+    agentId: message.agentId || selectedIds[index] || "ceo",
+    body: message.body || "AI 직원이 산출물을 정리했습니다.",
+    tasks: Array.isArray(message.tasks) && message.tasks.length ? message.tasks : ["산출물 정리"],
+    time: getTime(),
+  }));
+  const notifications = (apiRun.notifications || []).map((item, index) => ({
+    id: `n-api-${timestamp}-${index}`,
+    title: item.title || "AI 산출물 생성",
+    body: item.body || "AI 직원들이 산출물을 업데이트했습니다.",
+    tone: item.tone || "info",
+    time: getTime(),
+  }));
+  const log = {
+    id: `log-api-${timestamp}`,
+    title: apiRun.automationLog?.title || reason,
+    body: apiRun.automationLog?.body || `${selectedIds.map((id) => getAgent(id).name).join(" → ")} 순서로 업무가 자동 진행되었습니다.`,
+    time: getTime(),
+  };
+  return { selectedIds, messages, notifications, log, artifacts: apiRun.artifacts || state.generatedArtifacts };
+}
+
 function AgentAvatar({ agent, size = "md" }) {
   const Icon = agent.icon;
   return <div className={classNames("flex shrink-0 items-center justify-center rounded-md text-white", agent.color, size === "lg" ? "h-11 w-11" : "h-8 w-8")}><Icon size={size === "lg" ? 22 : 17} /></div>;
@@ -239,7 +285,7 @@ function Message({ message }) {
 }
 
 function ArtifactBoard({ boardId, state }) {
-  const artifacts = makeArtifacts(state);
+  const artifacts = { ...makeArtifacts(state), ...(state.generatedArtifacts || {}) };
   const rows = artifacts[boardId] || [];
   const board = boards.find((item) => item.id === boardId);
   const Icon = board?.icon || FileText;
@@ -339,27 +385,54 @@ export default function AICompanyApp() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
   }
 
-  function applyRun(command, reason = "대표 명령") {
-    const run = buildCollaborativeRun(command, state, reason);
+  async function applyRun(command, reason = "대표 명령") {
     const ceoCommand = {
       id: `ceo-command-${Date.now()}`,
       agentId: "ceo",
       body: command,
-      tasks: ["대표 명령 접수", "관련 AI 자동 배정", "최종 산출물 갱신"],
+      tasks: ["대표 명령 접수", "AI API 호출", "최종 산출물 갱신"],
       time: getTime(),
     };
-    persist({
+    const loadingState = {
       ...state,
       mission: command,
-      activeBoard: reason.includes("자동") ? "final" : "chat",
-      activeAgentId: run.selectedIds[run.selectedIds.length - 1] || state.activeAgentId,
+      processing: true,
+      notifications: [{ id: `n-loading-${Date.now()}`, title: "AI 직원 실행 중", body: "OpenAI API로 부서별 산출물을 생성하고 있습니다.", tone: "info", time: getTime() }, ...state.notifications].slice(0, 8),
       version: APP_VERSION,
-      bootstrapped: true,
-      messages: [...run.messages, ceoCommand, ...state.messages].slice(0, 60),
-      notifications: [...run.notifications, ...state.notifications].slice(0, 8),
-      automationLog: [run.log, ...state.automationLog].slice(0, 8),
-      done: ["최종본 갱신", "부서별 산출물 자동 생성", "대표 알림 발송", ...state.done].slice(0, 6),
-    });
+    };
+    persist(loadingState);
+
+    try {
+      const apiRun = await requestCompanyRun(command, loadingState);
+      const run = materializeRun(apiRun, command, loadingState, reason);
+      persist({
+        ...loadingState,
+        activeBoard: "final",
+        activeAgentId: run.selectedIds[run.selectedIds.length - 1] || loadingState.activeAgentId,
+        bootstrapped: true,
+        processing: false,
+        messages: [...run.messages, ceoCommand, ...loadingState.messages].slice(0, 60),
+        notifications: [...run.notifications, ...loadingState.notifications].slice(0, 8),
+        automationLog: [run.log, ...loadingState.automationLog].slice(0, 8),
+        generatedArtifacts: run.artifacts || loadingState.generatedArtifacts,
+        done: ["OpenAI API 산출물 생성", "최종본 갱신", "대표 알림 발송", ...loadingState.done].slice(0, 6),
+        version: APP_VERSION,
+      });
+    } catch (error) {
+      const run = buildCollaborativeRun(command, loadingState, `${reason} · 로컬 fallback`);
+      persist({
+        ...loadingState,
+        activeBoard: reason.includes("자동") ? "final" : "chat",
+        activeAgentId: run.selectedIds[run.selectedIds.length - 1] || loadingState.activeAgentId,
+        bootstrapped: true,
+        processing: false,
+        messages: [...run.messages, ceoCommand, ...loadingState.messages].slice(0, 60),
+        notifications: [{ id: `n-fallback-${Date.now()}`, title: "AI API 연결 실패", body: `${error.message} 로컬 자동화로 임시 처리했습니다.`, tone: "warning", time: getTime() }, ...run.notifications, ...loadingState.notifications].slice(0, 8),
+        automationLog: [run.log, ...loadingState.automationLog].slice(0, 8),
+        done: ["로컬 fallback 산출물 생성", "최종본 갱신", ...loadingState.done].slice(0, 6),
+        version: APP_VERSION,
+      });
+    }
   }
 
   function updateField(field, value) {
@@ -368,22 +441,7 @@ export default function AICompanyApp() {
     if (field === "mission" && state.automationEnabled) {
       window.clearTimeout(autoTimer.current);
       autoTimer.current = window.setTimeout(() => {
-        const latest = localStorage.getItem(STORAGE_KEY);
-        const parsed = latest ? JSON.parse(latest) : nextState;
-        const run = buildCollaborativeRun(value, parsed, "프로젝트 목표 변경 자동 반영");
-        const updated = {
-          ...parsed,
-          activeBoard: "final",
-          activeAgentId: run.selectedIds[run.selectedIds.length - 1] || parsed.activeAgentId,
-          messages: [...run.messages, ...parsed.messages].slice(0, 60),
-          notifications: [...run.notifications, ...parsed.notifications].slice(0, 8),
-          automationLog: [run.log, ...parsed.automationLog].slice(0, 8),
-          done: ["프로젝트 목표 자동 반영", "최종본 갱신", ...parsed.done].slice(0, 6),
-          bootstrapped: true,
-          version: APP_VERSION,
-        };
-        setState(updated);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        applyRun(value, "프로젝트 목표 변경 자동 반영");
       }, 900);
     }
   }
@@ -478,3 +536,9 @@ export default function AICompanyApp() {
     </div>
   );
 }
+
+
+
+
+
+

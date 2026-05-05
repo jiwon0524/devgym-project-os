@@ -1,4 +1,5 @@
-import { analyzeRequirementWithAi } from "../services/aiService.js";
+﻿import { analyzeRequirementWithAi } from "../services/aiService.js";
+import { runAiCompanyWorkflow } from "../services/companyAutomationService.js";
 import { authorizeProjectAccess, getBearerToken } from "../services/supabaseAuthService.js";
 import { assertRateLimit } from "../utils/rateLimiter.js";
 
@@ -19,18 +20,7 @@ async function readJsonBody(request) {
   return rawBody ? JSON.parse(rawBody) : {};
 }
 
-export async function handleAiRoutes(request, response) {
-  const url = new URL(request.url, `http://${request.headers.host}`);
-
-  if (request.method === "OPTIONS" && url.pathname.startsWith("/api/ai/")) {
-    sendJson(response, 204, {});
-    return true;
-  }
-
-  if (request.method !== "POST" || url.pathname !== "/api/ai/analyze-requirement") {
-    return false;
-  }
-
+async function handleRequirementAnalysis(request, response) {
   try {
     const body = await readJsonBody(request);
     const token = getBearerToken(request);
@@ -49,11 +39,56 @@ export async function handleAiRoutes(request, response) {
     sendJson(response, statusCode, {
       success: false,
       error: isMissingKey
-        ? "AI 서버 키가 설정되지 않았습니다. OPENAI_API_KEY를 backend 환경변수로 설정하세요."
+        ? "AI 서버 설정이 아직 완료되지 않았습니다. OPENAI_API_KEY를 백엔드 환경변수로 설정하세요."
         : error.message,
       code: isMissingKey ? "OPENAI_KEY_MISSING" : error.code || "AI_ANALYSIS_FAILED",
     });
   }
+}
 
-  return true;
+async function handleCompanyRun(request, response) {
+  try {
+    const body = await readJsonBody(request);
+    assertRateLimit({ key: "ai-company:local" });
+
+    const data = await runAiCompanyWorkflow({
+      command: body.command,
+      projectName: body.projectName,
+      mission: body.mission,
+    });
+
+    sendJson(response, 200, { success: true, data });
+  } catch (error) {
+    const isMissingKey = error.message.includes("OPENAI_API_KEY");
+    sendJson(response, isMissingKey ? 503 : 400, {
+      success: false,
+      error: isMissingKey
+        ? "OpenAI API 키가 백엔드에 설정되어 있지 않습니다. .env.local을 확인하세요."
+        : error.message,
+      code: isMissingKey ? "OPENAI_KEY_MISSING" : "AI_COMPANY_RUN_FAILED",
+    });
+  }
+}
+
+export async function handleAiRoutes(request, response) {
+  const url = new URL(request.url, `http://${request.headers.host}`);
+
+  if (request.method === "OPTIONS" && url.pathname.startsWith("/api/ai/")) {
+    sendJson(response, 204, {});
+    return true;
+  }
+
+  if (request.method !== "POST") return false;
+
+  if (url.pathname === "/api/ai/analyze-requirement") {
+    await handleRequirementAnalysis(request, response);
+    return true;
+  }
+
+  if (url.pathname === "/api/ai/company-run") {
+    await handleCompanyRun(request, response);
+    return true;
+  }
+
+  return false;
 }

@@ -1,22 +1,23 @@
-import { createServer } from "node:http";
+﻿import { createServer } from "node:http";
 import { existsSync, readFileSync } from "node:fs";
 import { handleAiRoutes } from "./routes/aiRoutes.js";
 import { handleInvitationRoutes } from "./routes/invitationRoutes.js";
 
 function loadLocalEnv() {
-  if (!existsSync(".env")) return;
+  for (const file of [".env", ".env.local"]) {
+    if (!existsSync(file)) continue;
 
-  const lines = readFileSync(".env", "utf8").split(/\r?\n/);
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
-    const [key, ...valueParts] = trimmed.split("=");
-    if (!process.env[key]) {
-      process.env[key] = valueParts.join("=").replace(/^["']|["']$/g, "");
+    const lines = readFileSync(file, "utf8").split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
+      const [key, ...valueParts] = trimmed.split("=");
+      if (!process.env[key]) {
+        process.env[key] = valueParts.join("=").replace(/^["']|["']$/g, "");
+      }
     }
   }
 }
-
 loadLocalEnv();
 
 const port = Number(process.env.PORT || 8787);
@@ -39,3 +40,5 @@ const server = createServer(async (request, response) => {
 server.listen(port, "127.0.0.1", () => {
   console.log(`AI backend listening on http://127.0.0.1:${port}`);
 });
+
+

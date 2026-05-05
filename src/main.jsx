@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import AICompanyApp from "./AICompanyApp.jsx";
 import "./index.css";
 
-const CLIENT_VERSION = "2026.05.06-autonomous-company";
+const CLIENT_VERSION = "2026.05.06-api-automation";
 const versionKey = "devgym-client-version";
 const previousVersion = localStorage.getItem(versionKey);
 
@@ -73,3 +73,4 @@ createRoot(document.getElementById("root")).render(
     </AppErrorBoundary>
   </React.StrictMode>
 );
+
