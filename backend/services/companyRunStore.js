@@ -155,3 +155,17 @@ export async function fetchLatestCompanyRun() {
     },
   };
 }
+export async function checkSupabaseConnection() {
+  const config = getSupabaseConfig();
+  if (!config) {
+    return { configured: false, connected: false, error: "Supabase URL 또는 service role key가 설정되지 않았습니다." };
+  }
+  const result = await supabaseRequest("agent_runs", {
+    query: { select: "id", limit: "1" },
+  });
+  return {
+    configured: true,
+    connected: result.ok,
+    error: result.ok ? null : result.error,
+  };
+}

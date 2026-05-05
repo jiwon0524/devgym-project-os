@@ -1,6 +1,6 @@
-﻿import { analyzeRequirementWithAi } from "../services/aiService.js";
+import { analyzeRequirementWithAi } from "../services/aiService.js";
 import { runAiCompanyWorkflow } from "../services/companyAutomationService.js";
-import { fetchLatestCompanyRun, saveCompanyRun } from "../services/companyRunStore.js";
+import { checkSupabaseConnection, fetchLatestCompanyRun, saveCompanyRun } from "../services/companyRunStore.js";
 import { authorizeProjectAccess, getBearerToken } from "../services/supabaseAuthService.js";
 import { assertRateLimit } from "../utils/rateLimiter.js";
 
@@ -82,6 +82,19 @@ async function handleLatestCompanyRun(response) {
   sendJson(response, 200, { success: true, data: latest });
 }
 
+async function handleIntegrationStatus(response) {
+  const supabase = await checkSupabaseConnection();
+  sendJson(response, 200, {
+    success: true,
+    data: {
+      openai: { configured: Boolean(process.env.OPENAI_API_KEY), connected: Boolean(process.env.OPENAI_API_KEY) },
+      supabase,
+      github: { configured: Boolean(process.env.GITHUB_APP_ID || process.env.GITHUB_TOKEN), connected: false },
+      kakao: { configured: Boolean(process.env.KAKAO_REST_API_KEY), connected: false },
+    },
+  });
+}
+
 export async function handleAiRoutes(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
 
@@ -92,6 +105,11 @@ export async function handleAiRoutes(request, response) {
 
   if (request.method === "GET" && url.pathname === "/api/ai/company-runs/latest") {
     await handleLatestCompanyRun(response);
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/ai/status") {
+    await handleIntegrationStatus(response);
     return true;
   }
 
