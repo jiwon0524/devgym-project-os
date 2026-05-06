@@ -1,4 +1,4 @@
-import { defaultTasks } from "../data/seedData.js";
+﻿import { defaultTasks } from "../data/seedData.js";
 import {
   currentUserId,
   defaultActivities,
@@ -12,8 +12,8 @@ const MOCK_STORE_KEY = "projectos.mockBackend";
 
 const defaultProfile = {
   id: currentUserId,
-  email: "jiwon@devgym.dev",
-  display_name: "지원",
+  email: "owner@projectos.local",
+  display_name: "JIWON",
   avatar_url: "",
   created_at: "2026-05-03T09:00:00.000Z",
 };
@@ -64,3 +64,4 @@ export function makeMockId(prefix) {
 export function getMockUser() {
   return defaultProfile;
 }
+

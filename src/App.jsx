@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+﻿import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "./components/Button.jsx";
 import { EmptyState } from "./components/EmptyState.jsx";
@@ -679,7 +679,7 @@ export default function App() {
                 className={inputClassName}
                 value={workspaceSetupName}
                 onChange={(event) => setWorkspaceSetupName(event.target.value)}
-                placeholder="예: DevGym 팀"
+                placeholder="팀 이름"
               />
             </FormField>
             <Button
@@ -847,3 +847,4 @@ export default function App() {
     </AppLayout>
   );
 }
+

@@ -1,4 +1,4 @@
-import { LogIn, LogOut, UserPlus } from "lucide-react";
+﻿import { LogIn, LogOut, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/Button.jsx";
 import { FormField, inputClassName } from "../../components/FormField.jsx";
@@ -6,9 +6,9 @@ import { FormField, inputClassName } from "../../components/FormField.jsx";
 export function AuthPanel({ mode, user, loading, error, onLogin, onSignUp, onLogout }) {
   const [expanded, setExpanded] = useState(false);
   const [form, setForm] = useState({
-    email: "jiwon@devgym.dev",
+    email: "",
     password: "",
-    displayName: "지원",
+    displayName: "",
   });
 
   const connected = mode === "supabase";
@@ -69,7 +69,7 @@ export function AuthPanel({ mode, user, loading, error, onLogin, onSignUp, onLog
                   type="email"
                   value={form.email}
                   onChange={(event) => setForm({ ...form, email: event.target.value })}
-                  placeholder="name@company.com"
+                  placeholder="이메일"
                 />
               </FormField>
               <FormField label="비밀번호">
@@ -88,7 +88,7 @@ export function AuthPanel({ mode, user, loading, error, onLogin, onSignUp, onLog
                   className={inputClassName}
                   value={form.displayName}
                   onChange={(event) => setForm({ ...form, displayName: event.target.value })}
-                  placeholder="지원"
+                  placeholder="이름"
                 />
               </FormField>
               <div className="flex flex-wrap gap-2">
@@ -121,3 +121,4 @@ export function AuthPanel({ mode, user, loading, error, onLogin, onSignUp, onLog
     </section>
   );
 }
+

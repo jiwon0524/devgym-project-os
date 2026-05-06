@@ -1,4 +1,4 @@
-import { CheckCircle2, Copy, MailPlus, Plus, ShieldAlert, Trash2 } from "lucide-react";
+﻿import { CheckCircle2, Copy, MailPlus, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/Button.jsx";
 import { FormField, inputClassName } from "../../components/FormField.jsx";
@@ -140,7 +140,7 @@ export function TeamTab({
                     className={inputClassName}
                     value={workspaceName}
                     onChange={(event) => setWorkspaceName(event.target.value)}
-                    placeholder="예: 모바일 앱 팀"
+                    placeholder="팀 이름"
                   />
                 </FormField>
                 <Button type="submit" variant="secondary" disabled={!workspaceName.trim()}>
@@ -302,3 +302,4 @@ export function TeamTab({
     </div>
   );
 }
+

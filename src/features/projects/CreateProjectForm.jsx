@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+﻿import { Plus } from "lucide-react";
 import { Button } from "../../components/Button.jsx";
 import { Card, CardBody, CardHeader } from "../../components/Card.jsx";
 import { FormField, inputClassName, textareaClassName } from "../../components/FormField.jsx";
@@ -20,7 +20,7 @@ export function CreateProjectForm({ draft, onDraftChange, onCreate }) {
               className={inputClassName}
               value={draft.name}
               onChange={(event) => onDraftChange({ ...draft, name: event.target.value })}
-              placeholder="예: 커머스 로그인 개선"
+              placeholder="프로젝트명"
             />
           </FormField>
           <FormField label="설명">
@@ -41,3 +41,4 @@ export function CreateProjectForm({ draft, onDraftChange, onCreate }) {
     </Card>
   );
 }
+

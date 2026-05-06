@@ -2,7 +2,7 @@
 The user is the CEO. Multiple AI employees collaborate as departments: CEO, Strategy, PM, UX, Architect, Developer, QA, Operations.
 Return only valid JSON. All natural language content must be Korean.
 Make outputs practical, specific, and usable for real software engineering work.
-Never mention that this is a demo.`;
+Describe the product as a production work system, not as a mock service.`;
 
 const agentProfiles = {
   ceo: { name: "대표총괄AI", role: "CEO", title: "목표/우선순위/승인" },
@@ -155,3 +155,5 @@ export async function runAiCompanyWorkflow({ command, projectName, mission }) {
     ...normalizeCompanyRun(parsed, selectedAgents),
   };
 }
+
+

@@ -1,4 +1,4 @@
-import { Loader2, RefreshCw, Wand2 } from "lucide-react";
+﻿import { Loader2, RefreshCw, Wand2 } from "lucide-react";
 import { Button } from "../../components/Button.jsx";
 import { Card, CardBody, CardHeader } from "../../components/Card.jsx";
 import { FormField, textareaClassName } from "../../components/FormField.jsx";
@@ -28,14 +28,14 @@ export function RequirementAnalyzer({
         <div className="space-y-4">
           <FormField
             label="요구사항 입력"
-            hint='예: "네이버 로그인으로 회원가입하고, 팀 프로젝트를 만들고, 팀원이 댓글을 달 수 있게 해줘"'
+            hint="요구사항을 검증 가능한 문장으로 입력하세요"
           >
             <textarea
               data-testid="requirement-input"
               className={`${textareaClassName} min-h-48`}
               value={input}
               onChange={(event) => onInputChange(event.target.value)}
-              placeholder="네이버 로그인으로 회원가입하고, 팀 프로젝트를 만들고, 팀원이 댓글을 달 수 있게 해줘"
+              placeholder="요구사항을 입력하세요"
               disabled={!canEditRequirements || isAnalyzing}
             />
           </FormField>
@@ -80,3 +80,5 @@ export function RequirementAnalyzer({
     </Card>
   );
 }
+
+
