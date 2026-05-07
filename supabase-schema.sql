@@ -1111,31 +1111,63 @@ exception when duplicate_object then null;
 end $$;
 
 -- AI company automation persistence
+create table if not exists public.ai_company_projects (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  mission text,
+  method text not null default 'agile',
+  owner_label text not null default 'JIWON',
+  status text not null default 'active' check (status in ('active', 'paused', 'done')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.agent_runs (
   id uuid primary key default gen_random_uuid(),
+  ai_project_id uuid references public.ai_company_projects(id) on delete cascade,
   project_name text not null,
   command text not null,
   mission text,
+  method text not null default 'agile',
+  current_agent text,
+  current_phase text,
   selected_agents jsonb not null default '[]'::jsonb,
   status text not null default 'completed' check (status in ('queued', 'running', 'completed', 'failed')),
   result jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
+  error_message text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  completed_at timestamptz
 );
+
+alter table public.agent_runs add column if not exists ai_project_id uuid references public.ai_company_projects(id) on delete cascade;
+alter table public.agent_runs add column if not exists method text not null default 'agile';
+alter table public.agent_runs add column if not exists current_agent text;
+alter table public.agent_runs add column if not exists current_phase text;
+alter table public.agent_runs add column if not exists error_message text;
+alter table public.agent_runs add column if not exists updated_at timestamptz not null default now();
+alter table public.agent_runs add column if not exists completed_at timestamptz;
 
 create table if not exists public.deliverables (
   id uuid primary key default gen_random_uuid(),
   run_id uuid not null references public.agent_runs(id) on delete cascade,
   type text not null check (type in ('prd', 'wbs', 'uml', 'api', 'qa', 'risk', 'release', 'integrations', 'final')),
+  agent_id text,
   title text not null,
   body text not null,
   content jsonb not null default '{}'::jsonb,
+  revision integer not null default 1,
   sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
 
+alter table public.deliverables add column if not exists agent_id text;
+alter table public.deliverables add column if not exists revision integer not null default 1;
+
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
   run_id uuid references public.agent_runs(id) on delete cascade,
+  agent_id text,
   title text not null,
   body text not null,
   tone text not null default 'info' check (tone in ('success', 'info', 'warning')),
@@ -1143,6 +1175,10 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now()
 );
 
+alter table public.notifications add column if not exists agent_id text;
+
+create index if not exists ai_company_projects_created_at_idx on public.ai_company_projects(created_at desc);
 create index if not exists agent_runs_created_at_idx on public.agent_runs(created_at desc);
+create index if not exists agent_runs_ai_project_id_idx on public.agent_runs(ai_project_id, created_at desc);
 create index if not exists deliverables_run_type_idx on public.deliverables(run_id, type, sort_order);
 create index if not exists notifications_run_created_idx on public.notifications(run_id, created_at desc);

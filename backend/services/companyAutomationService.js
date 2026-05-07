@@ -17,7 +17,7 @@ const agentProfiles = {
 
 const allowedAgentIds = Object.keys(agentProfiles);
 
-function selectAgents(command) {
+export function selectAgents(command) {
   const text = command.toLowerCase();
   if (text.includes("api") || text.includes("연동") || text.includes("github") || text.includes("깃허브")) return ["ceo", "arch", "dev", "ops", "qa"];
   if (text.includes("uml") || text.includes("설계") || text.includes("erd")) return ["ceo", "ux", "arch", "pm"];
