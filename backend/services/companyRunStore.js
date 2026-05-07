@@ -155,3 +155,60 @@ export async function checkSupabaseConnection() {
   const result = await supabaseRequest("agent_runs", { query: { select: "id", limit: "1" } });
   return { configured: true, connected: result.ok, error: result.ok ? null : result.error };
 }
+
+export async function listAiCompanyProjects() {
+  const result = await supabaseRequest("ai_company_projects", {
+    query: { select: "*", order: "updated_at.desc,created_at.desc", limit: "50" },
+  });
+  if (!result.ok && isMissingSchema(result.error)) return { ok: true, data: [] };
+  if (!result.ok) return result;
+  return { ok: true, data: rows(result.data) };
+}
+
+export async function reviseDeliverableWithOwnerComment({ runId, type, title, ownerComment, revised }) {
+  let found = await supabaseRequest("deliverables", {
+    query: { select: "*", run_id: `eq.${runId}`, type: `eq.${type}`, title: `eq.${title}`, limit: "1" },
+  });
+  if (!found.ok) return { ok: false, error: found.error, data: found.data };
+  let current = rows(found.data)[0];
+  if (!current) {
+    found = await supabaseRequest("deliverables", { query: { select: "*", run_id: `eq.${runId}`, type: `eq.${type}`, limit: "1" } });
+    if (!found.ok) return { ok: false, error: found.error, data: found.data };
+    current = rows(found.data)[0];
+  }
+  if (!current) return { ok: false, error: "Deliverable not found." };
+
+  const oldContent = current.content || {};
+  const revision = Number(current.revision || oldContent.revision || 1) + 1;
+  const comments = Array.isArray(oldContent.ownerComments) ? oldContent.ownerComments : [];
+  const nextContent = {
+    ...oldContent,
+    title: revised.title || current.title,
+    body: revised.body,
+    revision,
+    ownerComments: [...comments, { body: ownerComment, createdAt: new Date().toISOString(), changeSummary: revised.changeSummary }],
+  };
+
+  let update = await supabaseRequest("deliverables", {
+    method: "PATCH",
+    query: { id: `eq.${current.id}` },
+    body: { title: revised.title || current.title, body: revised.body, content: nextContent, revision },
+  });
+  if (!update.ok && isMissingSchema(update.error)) {
+    update = await supabaseRequest("deliverables", {
+      method: "PATCH",
+      query: { id: `eq.${current.id}` },
+      body: { title: revised.title || current.title, body: revised.body, content: nextContent },
+    });
+  }
+  if (!update.ok) return update;
+
+  await appendRunNotification(runId, {
+    agentId: current.agent_id || artifactOwner[type] || "ceo",
+    title: "??? ??? ??",
+    body: `${revised.title || current.title}? OWNER ???? ??????.`,
+    tone: "success",
+  });
+
+  return { ok: true, data: rows(update.data)[0] || { ...current, title: revised.title || current.title, body: revised.body, content: nextContent, revision } };
+}

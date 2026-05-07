@@ -157,3 +157,50 @@ export async function runAiCompanyWorkflow({ command, projectName, mission }) {
 }
 
 
+
+export async function rewriteArtifactWithOwnerComment({ projectName, artifactTitle, artifactType, artifactBody, ownerComment, agentId }) {
+  if (!ownerComment?.trim()) throw new Error("OWNER comment is required.");
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+
+  const model = process.env.OPENAI_MODEL || "gpt-5.4-mini";
+  const prompt = [
+    `Project name: ${projectName || "AI Project"}`,
+    `Deliverable type: ${artifactType}`,
+    `Responsible AI employee: ${agentId || "unknown"}`,
+    `Deliverable title: ${artifactTitle}`,
+    "",
+    "Current deliverable:",
+    artifactBody,
+    "",
+    "OWNER comment:",
+    ownerComment,
+    "",
+    "Revise the deliverable in Korean so it can be reviewed in real software PM work. Keep useful content, reflect the OWNER comment clearly, and return only JSON: { \"title\": \"...\", \"body\": \"...\", \"changeSummary\": \"...\" }",
+  ].join("\n");
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      input: [
+        { role: "system", content: [{ type: "input_text", text: "You revise practical software project management deliverables. Return only valid JSON. All natural language content must be Korean." }] },
+        { role: "user", content: [{ type: "input_text", text: prompt }] },
+      ],
+      text: { format: { type: "json_object" } },
+      reasoning: { effort: "low" },
+      max_output_tokens: 3000,
+    }),
+  });
+
+  const responseJson = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(responseJson.error?.message || `OpenAI API request failed (${response.status})`);
+  const text = extractResponseText(responseJson);
+  const parsed = JSON.parse(text);
+  return {
+    title: String(parsed.title || artifactTitle),
+    body: String(parsed.body || artifactBody),
+    changeSummary: String(parsed.changeSummary || "OWNER ???? ??? ???? ???????."),
+  };
+}

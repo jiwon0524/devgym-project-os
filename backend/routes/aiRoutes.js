@@ -1,13 +1,15 @@
 ﻿import { analyzeRequirementWithAi } from "../services/aiService.js";
-import { runAiCompanyWorkflow, selectAgents } from "../services/companyAutomationService.js";
+import { rewriteArtifactWithOwnerComment, runAiCompanyWorkflow, selectAgents } from "../services/companyAutomationService.js";
 import {
   appendRunNotification,
   checkSupabaseConnection,
   createQueuedCompanyRun,
   fetchCompanyRun,
   fetchLatestCompanyRun,
+  listAiCompanyProjects,
   replaceRunDeliverables,
   replaceRunNotifications,
+  reviseDeliverableWithOwnerComment,
   saveCompanyRun,
   updateCompanyRun,
 } from "../services/companyRunStore.js";
@@ -166,6 +168,49 @@ async function handleCompanyRunStatus(request, response, runId) {
   sendJson(response, result.found ? 200 : 404, { success: result.found, data: result, error: result.error });
 }
 
+
+async function handleCompanyProjects(response) {
+  const result = await listAiCompanyProjects();
+  sendJson(response, result.ok ? 200 : 400, { success: result.ok, data: result.data || [], error: result.error });
+}
+
+async function handleDeliverableOwnerComment(request, response, runId) {
+  try {
+    const body = await readJsonBody(request);
+    const type = String(body.type || "").trim();
+    const title = String(body.title || "").trim();
+    const ownerComment = String(body.comment || "").trim();
+    if (!type || !title || !ownerComment) throw new Error("??? ??, ??, OWNER ???? ?????.");
+
+    assertRateLimit({ key: "ai-company:comment" });
+    const currentRun = await fetchCompanyRun(runId);
+    if (!currentRun.found) throw new Error(currentRun.error || "?? ??? ?? ? ????.");
+    const artifacts = currentRun.data?.artifacts?.[type] || currentRun.run?.result?.artifacts?.[type] || [];
+    const artifact = artifacts.find((item) => item?.title === title) || artifacts[0];
+    if (!artifact) throw new Error("???? ???? ?? ? ????.");
+
+    const revised = await rewriteArtifactWithOwnerComment({
+      projectName: currentRun.run.project_name,
+      artifactTitle: title,
+      artifactType: type,
+      artifactBody: artifact.body,
+      ownerComment,
+      agentId: artifact.ownerId,
+    });
+    const saved = await reviseDeliverableWithOwnerComment({ runId, type, title, ownerComment, revised });
+    if (!saved.ok) throw new Error(saved.error || "??? ??? ??? ??????.");
+    const latest = await fetchCompanyRun(runId);
+    sendJson(response, 200, { success: true, data: { revised: saved.data, run: latest } });
+  } catch (error) {
+    const isMissingKey = error.message.includes("OPENAI_API_KEY");
+    sendJson(response, isMissingKey ? 503 : 400, {
+      success: false,
+      error: isMissingKey ? "OpenAI API ?? ???? ???? ?? ????." : error.message,
+      code: isMissingKey ? "OPENAI_KEY_MISSING" : "AI_DELIVERABLE_REWRITE_FAILED",
+    });
+  }
+}
+
 async function handleLatestCompanyRun(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const projectName = url.searchParams.get("projectName") || undefined;
@@ -194,6 +239,11 @@ export async function handleAiRoutes(request, response) {
     return true;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/ai/company-projects") {
+    await handleCompanyProjects(response);
+    return true;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/ai/company-runs/latest") {
     await handleLatestCompanyRun(request, response);
     return true;
@@ -207,6 +257,12 @@ export async function handleAiRoutes(request, response) {
 
   if (request.method === "GET" && url.pathname === "/api/ai/status") {
     await handleIntegrationStatus(response);
+    return true;
+  }
+
+  const deliverableCommentMatch = url.pathname.match(/^\/api\/ai\/company-runs\/([^/]+)\/deliverables\/comment$/);
+  if (request.method === "POST" && deliverableCommentMatch) {
+    await handleDeliverableOwnerComment(request, response, deliverableCommentMatch[1]);
     return true;
   }
 
