@@ -169,6 +169,29 @@ export async function listAiCompanyProjects() {
   return { ok: true, data: rows(result.data).filter((row) => !isInternalTestProject(row)) };
 }
 
+export async function deleteAiCompanyProject({ projectId, projectName }) {
+  const normalizedId = String(projectId || "").trim();
+  const normalizedName = String(projectName || "").trim();
+  if (!normalizedId && !normalizedName) return { ok: false, error: "삭제할 프로젝트 정보가 없습니다." };
+
+  if (normalizedName) {
+    await supabaseRequest("agent_runs", { method: "DELETE", query: { project_name: `eq.${normalizedName}` }, prefer: "return=minimal" });
+  }
+
+  if (normalizedId && !normalizedId.startsWith("project-") && normalizedId !== "blank") {
+    const byId = await supabaseRequest("ai_company_projects", { method: "DELETE", query: { id: `eq.${normalizedId}` }, prefer: "return=representation" });
+    if (byId.ok && rows(byId.data).length) return { ok: true, data: rows(byId.data) };
+    if (!byId.ok && !isMissingSchema(byId.error)) return byId;
+  }
+
+  if (normalizedName) {
+    const byName = await supabaseRequest("ai_company_projects", { method: "DELETE", query: { name: `eq.${normalizedName}` }, prefer: "return=representation" });
+    if (!byName.ok && isMissingSchema(byName.error)) return { ok: true, data: [], skipped: true };
+    return byName;
+  }
+
+  return { ok: true, data: [], skipped: true };
+}
 export async function editDeliverableDirectly({ runId, type, title, text }) {
   let found = await supabaseRequest("deliverables", {
     query: { select: "*", run_id: `eq.${runId}`, type: `eq.${type}`, title: `eq.${title}`, limit: "1" },
@@ -190,7 +213,7 @@ export async function editDeliverableDirectly({ runId, type, title, text }) {
     update = await supabaseRequest("deliverables", { method: "PATCH", query: { id: `eq.${current.id}` }, body: legacyPatch });
   }
   if (!update.ok) return update;
-  await appendRunNotification(runId, { agentId: current.agent_id || artifactOwner[type] || "ceo", title: "OWNER ?? ??", body: `${title} ???? OWNER? ?? ??????.`, tone: "success" });
+  await appendRunNotification(runId, { agentId: current.agent_id || artifactOwner[type] || "ceo", title: "OWNER 직접 수정", body: `${title} 산출물을 OWNER가 직접 수정했습니다.`, tone: "success" });
   return { ok: true, data: rows(update.data)[0] || { ...current, ...patch } };
 }
 
@@ -234,8 +257,8 @@ export async function reviseDeliverableWithOwnerComment({ runId, type, title, ow
 
   await appendRunNotification(runId, {
     agentId: current.agent_id || artifactOwner[type] || "ceo",
-    title: "??? ??? ??",
-    body: `${revised.title || current.title}? OWNER ???? ??????.`,
+    title: "산출물 보완 완료",
+    body: `${revised.title || current.title}에 OWNER 코멘트를 반영했습니다.`,
     tone: "success",
   });
 

@@ -1,4 +1,4 @@
-﻿import { analyzeRequirementWithAi } from "../services/aiService.js";
+import { analyzeRequirementWithAi } from "../services/aiService.js";
 import { rewriteArtifactWithOwnerComment, runAiCompanyWorkflow, selectAgents } from "../services/companyAutomationService.js";
 import {
   appendRunNotification,
@@ -7,6 +7,7 @@ import {
   fetchCompanyRun,
   fetchLatestCompanyRun,
   listAiCompanyProjects,
+  deleteAiCompanyProject,
   replaceRunDeliverables,
   replaceRunNotifications,
   reviseDeliverableWithOwnerComment,
@@ -21,7 +22,7 @@ function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": process.env.CORS_ORIGIN || "http://127.0.0.1:5173",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
   });
   response.end(JSON.stringify(payload));
@@ -175,6 +176,17 @@ async function handleCompanyProjects(response) {
   sendJson(response, result.ok ? 200 : 400, { success: result.ok, data: result.data || [], error: result.error });
 }
 
+async function handleCompanyProjectDelete(request, response, projectId) {
+  try {
+    const url = new URL(request.url, `http://${request.headers.host}`);
+    const projectName = url.searchParams.get("name") || undefined;
+    const result = await deleteAiCompanyProject({ projectId, projectName });
+    if (!result.ok) throw new Error(result.error || "프로젝트 삭제에 실패했습니다.");
+    sendJson(response, 200, { success: true, data: result.data || null });
+  } catch (error) {
+    sendJson(response, 400, { success: false, error: error.message, code: "AI_COMPANY_PROJECT_DELETE_FAILED" });
+  }
+}
 async function handleDeliverableDirectEdit(request, response, runId) {
   try {
     const body = await readJsonBody(request);
@@ -198,14 +210,14 @@ async function handleDeliverableOwnerComment(request, response, runId) {
     const type = String(body.type || "").trim();
     const title = String(body.title || "").trim();
     const ownerComment = String(body.comment || "").trim();
-    if (!type || !title || !ownerComment) throw new Error("??? ??, ??, OWNER ???? ?????.");
+    if (!type || !title || !ownerComment) throw new Error("산출물 유형, 제목, OWNER 코멘트가 필요합니다.");
 
     assertRateLimit({ key: "ai-company:comment" });
     const currentRun = await fetchCompanyRun(runId);
-    if (!currentRun.found) throw new Error(currentRun.error || "?? ??? ?? ? ????.");
+    if (!currentRun.found) throw new Error(currentRun.error || "실행 기록을 찾을 수 없습니다.");
     const artifacts = currentRun.data?.artifacts?.[type] || currentRun.run?.result?.artifacts?.[type] || [];
     const artifact = artifacts.find((item) => item?.title === title) || artifacts[0];
-    if (!artifact) throw new Error("???? ???? ?? ? ????.");
+    if (!artifact) throw new Error("수정할 산출물을 찾을 수 없습니다.");
 
     const revised = await rewriteArtifactWithOwnerComment({
       projectName: currentRun.run.project_name,
@@ -216,14 +228,14 @@ async function handleDeliverableOwnerComment(request, response, runId) {
       agentId: artifact.ownerId,
     });
     const saved = await reviseDeliverableWithOwnerComment({ runId, type, title, ownerComment, revised });
-    if (!saved.ok) throw new Error(saved.error || "??? ??? ??? ??????.");
+    if (!saved.ok) throw new Error(saved.error || "산출물 보완 저장에 실패했습니다.");
     const latest = await fetchCompanyRun(runId);
     sendJson(response, 200, { success: true, data: { revised: saved.data, run: latest } });
   } catch (error) {
     const isMissingKey = error.message.includes("OPENAI_API_KEY");
     sendJson(response, isMissingKey ? 503 : 400, {
       success: false,
-      error: isMissingKey ? "OpenAI API ?? ???? ???? ?? ????." : error.message,
+      error: isMissingKey ? "OpenAI API 키가 백엔드에 설정되어 있지 않습니다." : error.message,
       code: isMissingKey ? "OPENAI_KEY_MISSING" : "AI_DELIVERABLE_REWRITE_FAILED",
     });
   }
@@ -262,6 +274,11 @@ export async function handleAiRoutes(request, response) {
     return true;
   }
 
+  const projectDeleteMatch = url.pathname.match(/^\/api\/ai\/company-projects\/([^/]+)$/);
+  if (request.method === "DELETE" && projectDeleteMatch) {
+    await handleCompanyProjectDelete(request, response, decodeURIComponent(projectDeleteMatch[1]));
+    return true;
+  }
   if (request.method === "GET" && url.pathname === "/api/ai/company-runs/latest") {
     await handleLatestCompanyRun(request, response);
     return true;
