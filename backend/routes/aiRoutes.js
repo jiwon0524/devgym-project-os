@@ -102,7 +102,7 @@ async function startCompanyRun(request, response) {
       success: true,
       data: {
         runId: queued.run.id,
-        projectId: queued.project.id,
+        projectId: queued.project?.id || null,
         status: "queued",
         selectedAgents,
         message: "서버 자동화 실행이 등록되었습니다.",
