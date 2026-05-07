@@ -39,6 +39,10 @@ Return JSON exactly matching this shape:
   "notifications": [{ "title": "...", "body": "...", "tone": "success" }],
   "automationLog": { "title": "...", "body": "..." },
   "artifacts": {
+    "features": [{ "id": "SFR-101", "title": "...", "group": "...", "kind": "SRS|SFR|StRS", "role": "...", "status": "초안|검토 필요|확정", "priority": "P0|P1|P2", "body": "...", "value": 9, "effort": 4, "risk": 7, "score": 105 }],
+    "priority": [{ "title": "Priority-Scorecard.md", "body": "..." }],
+    "roadmap": [{ "title": "Roadmap.md", "body": "...", "phases": [{ "phase": "Now", "title": "...", "items": ["SFR-101"] }] }],
+    "report": [{ "title": "Weekly-PM-Report.md", "body": "..." }],
     "prd": [{ "title": "...", "body": "..." }],
     "wbs": [{ "title": "...", "body": "..." }],
     "uml": [{ "title": "...", "body": "..." }],
@@ -56,6 +60,10 @@ Rules:
 - agentId must be one of: ${allowedAgentIds.join(", ")}.
 - tasks must be concrete and short.
 - notifications explain what was just created or updated.
+- features must split requirements by feature area like a practical PM feature board. Use SRS for stakeholder/software requirements, SFR for functional requirements, and StRS for technical/strategic requirements.
+- priority must include a score table using value, risk, effort, priority, and status.
+- roadmap must include Now/Next/Later phases.
+- report must be a weekly PM report for CEO/OWNER review.
 - final must summarize the completed deliverable for CEO review.
 - If the project is about a university academic system, use university-specific details such as students, professors, teaching assistants, courses, assignments, attendance, counseling, and notices.`;
 }
@@ -79,7 +87,33 @@ function normalizeRows(rows) {
   return rows
     .filter((row) => row && typeof row.title === "string" && typeof row.body === "string")
     .slice(0, 8)
-    .map((row) => ({ title: row.title, body: row.body }));
+    .map((row) => ({ title: row.title, body: row.body, phases: row.phases }));
+}
+
+function normalizeFeatureRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter((row) => row && (row.id || row.title) && row.body)
+    .slice(0, 24)
+    .map((row, index) => {
+      const value = Number(row.value || 7);
+      const effort = Number(row.effort || 4);
+      const risk = Number(row.risk || 5);
+      return {
+        id: String(row.id || "SFR-" + String(index + 1).padStart(3, "0")),
+        title: String(row.title || "기능 요구사항"),
+        group: String(row.group || row.category || "미분류"),
+        kind: String(row.kind || row.type || "SRS"),
+        role: String(row.role || row.actor || "사용자"),
+        status: String(row.status || "초안"),
+        priority: String(row.priority || "P1"),
+        body: String(row.body),
+        value,
+        effort,
+        risk,
+        score: Number(row.score || Math.max(1, Math.round((value * 2 + risk - effort) * 5))),
+      };
+    });
 }
 
 function normalizeCompanyRun(raw, selectedAgents) {
@@ -104,6 +138,10 @@ function normalizeCompanyRun(raw, selectedAgents) {
       body: String(raw.automationLog?.body || `${selectedAgents.map((id) => agentProfiles[id].name).join(" → ")} 순서로 업무를 진행했습니다.`),
     },
     artifacts: {
+      features: normalizeFeatureRows(raw.artifacts?.features),
+      priority: normalizeRows(raw.artifacts?.priority),
+      roadmap: normalizeRows(raw.artifacts?.roadmap),
+      report: normalizeRows(raw.artifacts?.report),
       prd: normalizeRows(raw.artifacts?.prd),
       wbs: normalizeRows(raw.artifacts?.wbs),
       uml: normalizeRows(raw.artifacts?.uml),
