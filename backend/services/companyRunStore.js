@@ -1,4 +1,4 @@
-﻿const SUPABASE_REST_SUFFIX = "/rest/v1";
+const SUPABASE_REST_SUFFIX = "/rest/v1";
 const artifactOwner = { prd: "pm", wbs: "dev", uml: "ux", api: "arch", qa: "qa", risk: "strategy", release: "ops", integrations: "ops", final: "ceo" };
 
 function normalizeSupabaseUrl(url) {
@@ -156,13 +156,42 @@ export async function checkSupabaseConnection() {
   return { configured: true, connected: result.ok, error: result.ok ? null : result.error };
 }
 
+function isInternalTestProject(row) {
+  return /^(DB-PROJECT|TEST-|TEST-COMMAND|DB-|LOCAL-TEST)/i.test(String(row?.name || ""));
+}
+
 export async function listAiCompanyProjects() {
   const result = await supabaseRequest("ai_company_projects", {
     query: { select: "*", order: "updated_at.desc,created_at.desc", limit: "50" },
   });
   if (!result.ok && isMissingSchema(result.error)) return { ok: true, data: [] };
   if (!result.ok) return result;
-  return { ok: true, data: rows(result.data) };
+  return { ok: true, data: rows(result.data).filter((row) => !isInternalTestProject(row)) };
+}
+
+export async function editDeliverableDirectly({ runId, type, title, text }) {
+  let found = await supabaseRequest("deliverables", {
+    query: { select: "*", run_id: `eq.${runId}`, type: `eq.${type}`, title: `eq.${title}`, limit: "1" },
+  });
+  if (!found.ok) return { ok: false, error: found.error, data: found.data };
+  const current = rows(found.data)[0];
+  if (!current) return { ok: false, error: "Deliverable not found." };
+  const oldContent = current.content || {};
+  const revision = Number(current.revision || oldContent.revision || 1) + 1;
+  const hasDiagram = Boolean(oldContent.diagram || current.title?.toLowerCase().includes(".puml"));
+  const nextContent = { ...oldContent, revision, editedByOwnerAt: new Date().toISOString() };
+  if (hasDiagram) nextContent.diagram = text;
+  else nextContent.body = text;
+  const patch = hasDiagram ? { content: nextContent, revision } : { body: text, content: nextContent, revision };
+  if (hasDiagram) patch.body = current.body;
+  let update = await supabaseRequest("deliverables", { method: "PATCH", query: { id: `eq.${current.id}` }, body: patch });
+  if (!update.ok && isMissingSchema(update.error)) {
+    const { revision: _revision, ...legacyPatch } = patch;
+    update = await supabaseRequest("deliverables", { method: "PATCH", query: { id: `eq.${current.id}` }, body: legacyPatch });
+  }
+  if (!update.ok) return update;
+  await appendRunNotification(runId, { agentId: current.agent_id || artifactOwner[type] || "ceo", title: "OWNER ?? ??", body: `${title} ???? OWNER? ?? ??????.`, tone: "success" });
+  return { ok: true, data: rows(update.data)[0] || { ...current, ...patch } };
 }
 
 export async function reviseDeliverableWithOwnerComment({ runId, type, title, ownerComment, revised }) {

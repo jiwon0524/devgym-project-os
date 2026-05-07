@@ -10,6 +10,7 @@ import {
   replaceRunDeliverables,
   replaceRunNotifications,
   reviseDeliverableWithOwnerComment,
+  editDeliverableDirectly,
   saveCompanyRun,
   updateCompanyRun,
 } from "../services/companyRunStore.js";
@@ -174,6 +175,23 @@ async function handleCompanyProjects(response) {
   sendJson(response, result.ok ? 200 : 400, { success: result.ok, data: result.data || [], error: result.error });
 }
 
+async function handleDeliverableDirectEdit(request, response, runId) {
+  try {
+    const body = await readJsonBody(request);
+    const type = String(body.type || "").trim();
+    const title = String(body.title || "").trim();
+    const text = String(body.text || "");
+    if (!type || !title || !text.trim()) throw new Error("type, title, text are required.");
+    assertRateLimit({ key: "ai-company:edit" });
+    const result = await editDeliverableDirectly({ runId, type, title, text });
+    if (!result.ok) throw new Error(result.error || "Direct edit failed.");
+    const latest = await fetchCompanyRun(runId);
+    sendJson(response, 200, { success: true, data: { deliverable: result.data, run: latest } });
+  } catch (error) {
+    sendJson(response, 400, { success: false, error: error.message });
+  }
+}
+
 async function handleDeliverableOwnerComment(request, response, runId) {
   try {
     const body = await readJsonBody(request);
@@ -257,6 +275,12 @@ export async function handleAiRoutes(request, response) {
 
   if (request.method === "GET" && url.pathname === "/api/ai/status") {
     await handleIntegrationStatus(response);
+    return true;
+  }
+
+  const deliverableEditMatch = url.pathname.match(/^\/api\/ai\/company-runs\/([^/]+)\/deliverables\/edit$/);
+  if (request.method === "POST" && deliverableEditMatch) {
+    await handleDeliverableDirectEdit(request, response, deliverableEditMatch[1]);
     return true;
   }
 
